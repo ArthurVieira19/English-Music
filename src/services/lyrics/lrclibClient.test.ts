@@ -77,4 +77,14 @@ describe("searchSyncedLyrics", () => {
 
     await expect(searchSyncedLyrics("Title", "Artist")).rejects.toThrow("500")
   })
+
+  it("searches by track alone when the artist is unknown", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse([makeResult()]))
+    vi.stubGlobal("fetch", fetchMock)
+
+    await searchSyncedLyrics("Die With A Smile", "  ")
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock.mock.calls[0][0]).not.toContain("artist_name")
+  })
 })

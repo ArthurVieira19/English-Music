@@ -1,20 +1,27 @@
 "use client";
 
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Search } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Check, ExternalLink, Loader2, Search, Sparkles } from "lucide-react";
 import type { Song } from "@/types/Song";
 import { parseLRC } from "@/modules/lyrics/lrcParser";
 import { estimateSongDifficulty } from "@/modules/lyrics/estimateSongDifficulty";
+import { rankLyricsMatches, type RankedMatch } from "@/modules/lyrics/rankLyricsMatches";
 import { parseYoutubeId } from "@/modules/youtube/parseYoutubeId";
+import { parseVideoTitle, youtubeSearchUrl } from "@/modules/youtube/parseVideoTitle";
 import { searchSyncedLyrics, type LrclibResult } from "@/services/lyrics/lrclibClient";
+import { lookupYoutubeVideo, type YoutubeVideoInfo } from "@/services/youtube/youtubeOEmbed";
 import { SONGS } from "@/data/songs";
 import { useAuthStore } from "@/stores/authStore";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+/** Wait this long after the link stops changing before asking YouTube about it. */
+const LOOKUP_DELAY_MS = 350;
 
 function formatDuration(seconds: number): string {
   const totalSeconds = Math.round(seconds);
@@ -33,6 +40,24 @@ function slugify(text: string): string {
   return slug || "song";
 }
 
+type VideoState =
+  | { status: "idle" }
+  | { status: "loading"; id: string }
+  | { status: "found"; id: string; info: YoutubeVideoInfo }
+  | { status: "failed"; id: string; reason: "not-found" | "restricted" | "unavailable" };
+
+const VIDEO_FAILURE_TEXT = {
+  "not-found": "YouTube doesn't know this video. Check the link.",
+  restricted: "This video is private or can't be played outside YouTube, so it won't play in the game.",
+  unavailable: "Couldn't reach YouTube to read the video's details. Fill in the title and artist yourself.",
+} as const;
+
+/**
+ * Adding a song starts from the YouTube link: the video's title gives the
+ * song's title and artist, those find the synced lyrics, and a confident match
+ * is picked straight away. Every field stays editable, and nothing the admin
+ * typed is ever overwritten by a guess.
+ */
 export default function AddSongPage() {
   const router = useRouter();
   const addSong = useLibraryStore((s) => s.addSong);
@@ -44,57 +69,119 @@ export default function AddSongPage() {
   const [artist, setArtist] = useState("");
   const [youtubeInput, setYoutubeInput] = useState("");
   const [lyricsInput, setLyricsInput] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  // Fields the admin has typed into themselves; guesses never overwrite those.
+  const editedRef = useRef({ title: false, artist: false, lyrics: false });
+
+  const [video, setVideo] = useState<VideoState>({ status: "idle" });
+
+  const [lyricsSearchLoading, setLyricsSearchLoading] = useState(false);
+  const [lyricsSearchError, setLyricsSearchError] = useState<string | null>(null);
+  const [lyricsMatches, setLyricsMatches] = useState<RankedMatch<LrclibResult>[]>([]);
+  const [selectedLyricsId, setSelectedLyricsId] = useState<number | null>(null);
+  // Bumped by every new search, so a slow answer to an older one is dropped.
+  const searchRunRef = useRef(0);
+
+  const youtubeId = parseYoutubeId(youtubeInput);
+  const isDuplicate = youtubeId !== null && [...SONGS, ...librarySongs].some((s) => s.youtubeId === youtubeId);
+
   const estimatedDifficulty = useMemo(() => {
     const parsed = parseLRC(lyricsInput);
     return parsed.length > 0 ? estimateSongDifficulty(parsed).level : null;
   }, [lyricsInput]);
-  const [error, setError] = useState<string | null>(null);
 
-  const [lyricsSearchLoading, setLyricsSearchLoading] = useState(false);
-  const [lyricsSearchError, setLyricsSearchError] = useState<string | null>(null);
-  const [lyricsResults, setLyricsResults] = useState<LrclibResult[]>([]);
-
-  async function handleLyricsSearch() {
-    if (!title.trim() || !artist.trim()) {
-      setLyricsSearchError("Fill in title and artist first.");
+  async function runLyricsSearch(searchTitle: string, searchArtist: string, { automatic }: { automatic: boolean }) {
+    if (!searchTitle.trim()) {
+      setLyricsSearchError("Fill in the title first.");
       return;
     }
 
+    const run = ++searchRunRef.current;
     setLyricsSearchLoading(true);
     setLyricsSearchError(null);
-    setLyricsResults([]);
+    setLyricsMatches([]);
 
     try {
-      const results = await searchSyncedLyrics(title.trim(), artist.trim());
-      if (results.length === 0) {
-        setLyricsSearchError("No synced lyrics found. Paste them manually below.");
-      } else {
-        setLyricsResults(results);
+      const results = await searchSyncedLyrics(searchTitle.trim(), searchArtist.trim());
+      if (run !== searchRunRef.current) return;
+
+      const ranked = rankLyricsMatches(results, { title: searchTitle, artist: searchArtist });
+      if (ranked.length === 0) {
+        setLyricsSearchError("No synced lyrics found. Check the title and artist, or paste them manually below.");
+        return;
+      }
+      setLyricsMatches(ranked);
+
+      // A sure match fills itself in, unless the admin already chose or typed lyrics.
+      const [best] = ranked;
+      if (automatic && best.confidence === "exact" && !editedRef.current.lyrics && best.result.syncedLyrics) {
+        setLyricsInput(best.result.syncedLyrics);
+        setSelectedLyricsId(best.result.id);
       }
     } catch {
-      setLyricsSearchError("Lyrics search failed. Paste them manually below.");
+      if (run === searchRunRef.current) setLyricsSearchError("Lyrics search failed. Paste them manually below.");
     } finally {
-      setLyricsSearchLoading(false);
+      if (run === searchRunRef.current) setLyricsSearchLoading(false);
     }
   }
 
+  // A new video link: read its title from YouTube, guess the song from it and
+  // go looking for the lyrics, all without the admin pressing anything.
+  useEffect(() => {
+    if (!youtubeId) {
+      setVideo({ status: "idle" });
+      return;
+    }
+
+    // Show the thumbnail (and a duplicate warning) at once; ask YouTube once the link settles.
+    setVideo({ status: "loading", id: youtubeId });
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      const lookup = await lookupYoutubeVideo(youtubeId);
+      if (cancelled) return;
+
+      if (!lookup.ok) {
+        setVideo({ status: "failed", id: youtubeId, reason: lookup.reason });
+        return;
+      }
+      setVideo({ status: "found", id: youtubeId, info: lookup.info });
+      // Already in the library: it can't be added, so don't fill anything in or search for lyrics.
+      if (isDuplicate) return;
+
+      const guess = parseVideoTitle(lookup.info.title, lookup.info.channel);
+      const nextTitle = editedRef.current.title ? null : guess.title;
+      const nextArtist = editedRef.current.artist ? null : guess.artist;
+      if (nextTitle !== null) setTitle(nextTitle);
+      if (nextArtist !== null) setArtist(nextArtist);
+
+      void runLyricsSearch(nextTitle ?? title, nextArtist ?? artist, { automatic: true });
+    }, LOOKUP_DELAY_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+    // Only a different video should trigger a lookup; title/artist are read as they are at that moment.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [youtubeId]);
+
   function handleSelectLyricsResult(result: LrclibResult) {
     if (!result.syncedLyrics) return;
+    editedRef.current.lyrics = true;
     setLyricsInput(result.syncedLyrics);
-    setLyricsResults([]);
+    setSelectedLyricsId(result.id);
   }
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setError(null);
 
-    const youtubeId = parseYoutubeId(youtubeInput);
     if (!youtubeId) {
       setError("That doesn't look like a valid YouTube link or video ID.");
       return;
     }
 
-    const isDuplicate = [...SONGS, ...librarySongs].some((s) => s.youtubeId === youtubeId);
     if (isDuplicate) {
       setError("This song is already in the library.");
       return;
@@ -146,6 +233,8 @@ export default function AddSongPage() {
     );
   }
 
+  const canSearchYoutube = Boolean(title.trim() || artist.trim());
+
   return (
     <div className="mx-auto max-w-xl px-4 py-10">
       <Link
@@ -159,35 +248,13 @@ export default function AddSongPage() {
         <CardHeader>
           <CardTitle className="font-display text-2xl">Add a song</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Paste a YouTube link, then try &ldquo;Find lyrics automatically&rdquo; to pull synced
-            lyrics from lrclib.net, or paste your own in LRC format (
-            <code className="rounded bg-accent px-1 py-0.5 text-xs">[00:12.50]line text</code>).
-            Songs you add join the global library and are visible to every player, so make sure you
-            have the rights to use the content.
+            Paste the YouTube link and the rest fills itself in: title and artist from the video, synced lyrics
+            from lrclib.net. Check them, then add. Songs you add join the global library and are visible to every
+            player, so make sure you have the rights to use the content.
           </p>
         </CardHeader>
         <CardContent>
           <form className="flex flex-col gap-4" onSubmit={handleSubmit}>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium" htmlFor="title">
-                  Title
-                </label>
-                <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-sm font-medium" htmlFor="artist">
-                  Artist
-                </label>
-                <Input
-                  id="artist"
-                  value={artist}
-                  onChange={(e) => setArtist(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
             <div className="flex flex-col gap-1.5">
               <label className="text-sm font-medium" htmlFor="youtube">
                 YouTube link or video ID
@@ -199,10 +266,58 @@ export default function AddSongPage() {
                 onChange={(e) => setYoutubeInput(e.target.value)}
                 required
               />
+              {canSearchYoutube ? (
+                <a
+                  href={youtubeSearchUrl(title, artist)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-foreground"
+                >
+                  <ExternalLink aria-hidden className="size-3" />
+                  Find &ldquo;{[artist.trim(), title.trim()].filter(Boolean).join(" – ")}&rdquo; on YouTube
+                </a>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  No link yet? Type the title and artist below to search YouTube for it.
+                </p>
+              )}
+
+              <VideoPreview video={video} isDuplicate={isDuplicate} />
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium" htmlFor="title">
+                  Title
+                </label>
+                <Input
+                  id="title"
+                  value={title}
+                  onChange={(e) => {
+                    editedRef.current.title = true;
+                    setTitle(e.target.value);
+                  }}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-sm font-medium" htmlFor="artist">
+                  Artist
+                </label>
+                <Input
+                  id="artist"
+                  value={artist}
+                  onChange={(e) => {
+                    editedRef.current.artist = true;
+                    setArtist(e.target.value);
+                  }}
+                  required
+                />
+              </div>
             </div>
 
             <div className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <label className="text-sm font-medium" htmlFor="lyrics">
                   Lyrics (LRC format)
                 </label>
@@ -210,8 +325,8 @@ export default function AddSongPage() {
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={lyricsSearchLoading || !title.trim() || !artist.trim()}
-                  onClick={handleLyricsSearch}
+                  disabled={lyricsSearchLoading || !title.trim()}
+                  onClick={() => runLyricsSearch(title, artist, { automatic: false })}
                   className="gap-1.5"
                 >
                   {lyricsSearchLoading ? (
@@ -219,7 +334,7 @@ export default function AddSongPage() {
                   ) : (
                     <Search aria-hidden className="size-3.5" />
                   )}
-                  Find lyrics automatically
+                  Find lyrics
                 </Button>
               </div>
 
@@ -229,23 +344,48 @@ export default function AddSongPage() {
                 </p>
               )}
 
-              {lyricsResults.length > 0 && (
-                <div className="flex max-h-48 flex-col gap-1 overflow-y-auto rounded-md border border-border p-1.5">
-                  {lyricsResults.map((result) => (
-                    <button
-                      key={result.id}
-                      type="button"
-                      onClick={() => handleSelectLyricsResult(result)}
-                      className="flex flex-col rounded px-2 py-1.5 text-left text-sm hover:bg-accent"
-                    >
-                      <span className="font-medium">
-                        {result.trackName} — {result.artistName}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {result.albumName || "Unknown album"} · {formatDuration(result.duration)}
-                      </span>
-                    </button>
-                  ))}
+              {lyricsMatches.length > 0 && (
+                <div
+                  role="group"
+                  aria-label="Lyrics found"
+                  className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-border p-1.5"
+                >
+                  {lyricsMatches.map(({ result, confidence }, index) => {
+                    const selected = result.id === selectedLyricsId;
+                    return (
+                      <button
+                        key={result.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => handleSelectLyricsResult(result)}
+                        className={cn(
+                          "flex items-start justify-between gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-accent",
+                          selected && "bg-primary/10 ring-1 ring-primary/30",
+                        )}
+                      >
+                        <span className="flex min-w-0 flex-col">
+                          <span className="truncate font-medium">
+                            {result.trackName} — {result.artistName}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {result.albumName || "Unknown album"} · {formatDuration(result.duration)}
+                          </span>
+                        </span>
+                        {selected ? (
+                          <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-primary">
+                            <Check aria-hidden className="size-3.5" /> In use
+                          </span>
+                        ) : (
+                          index === 0 &&
+                          confidence !== "weak" && (
+                            <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+                              <Sparkles aria-hidden className="size-3" /> Best match
+                            </span>
+                          )
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -254,7 +394,11 @@ export default function AddSongPage() {
                 required
                 rows={8}
                 value={lyricsInput}
-                onChange={(e) => setLyricsInput(e.target.value)}
+                onChange={(e) => {
+                  editedRef.current.lyrics = true;
+                  setSelectedLyricsId(null);
+                  setLyricsInput(e.target.value);
+                }}
                 placeholder={"[00:01.00]First line\n[00:05.00]Second line"}
                 className="rounded-md border border-input bg-input/30 px-3 py-2 font-mono text-sm outline-none focus:border-primary"
               />
@@ -284,6 +428,46 @@ export default function AddSongPage() {
           </form>
         </CardContent>
       </Card>
+    </div>
+  );
+}
+
+/** What the pasted link points at, so the admin can see it's the right video before going further. */
+function VideoPreview({ video, isDuplicate }: { video: VideoState; isDuplicate: boolean }) {
+  if (video.status === "idle") return null;
+
+  return (
+    <div className="mt-1 flex items-center gap-3 rounded-lg border border-border p-2" aria-live="polite">
+      {/* eslint-disable-next-line @next/next/no-img-element -- static export: no image optimizer */}
+      <img
+        src={`https://i.ytimg.com/vi/${video.id}/mqdefault.jpg`}
+        alt=""
+        className="aspect-video w-24 shrink-0 rounded object-cover"
+      />
+      <div className="min-w-0 flex-1 text-sm">
+        {video.status === "loading" && (
+          <p className="flex items-center gap-1.5 text-muted-foreground">
+            <Loader2 aria-hidden className="size-3.5 animate-spin" /> Reading the video…
+          </p>
+        )}
+        {video.status === "found" && (
+          <>
+            <p className="truncate font-medium">{video.info.title}</p>
+            <p className="truncate text-xs text-muted-foreground">{video.info.channel}</p>
+          </>
+        )}
+        {video.status === "failed" && (
+          <p className="flex items-start gap-1.5 text-muted-foreground">
+            <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-orange-400" />
+            {VIDEO_FAILURE_TEXT[video.reason]}
+          </p>
+        )}
+        {isDuplicate && (
+          <p role="alert" className="mt-1 text-xs font-medium text-destructive">
+            This video is already in the library.
+          </p>
+        )}
+      </div>
     </div>
   );
 }

@@ -37,6 +37,9 @@ async function search(params: Record<string, string>): Promise<LrclibResult[]> {
  * match themselves instead of hitting a dead end.
  */
 export async function searchSyncedLyrics(title: string, artist: string): Promise<LrclibResult[]> {
+  // An unknown artist (a video title that only names the song) goes straight to the track-only search.
+  if (!artist.trim()) return search({ track_name: title })
+
   const combined = await search({ track_name: title, artist_name: artist })
   if (combined.length > 0) return combined
 
