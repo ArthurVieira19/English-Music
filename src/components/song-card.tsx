@@ -41,7 +41,16 @@ export function songHref(song: Pick<Song, "id">): string {
  * Difficulty as a 4-step meter plus its name: the bars read at a glance in a
  * dense grid, the word keeps it unambiguous (and readable without color).
  */
-export function DifficultyMeter({ difficulty, className }: { difficulty: string; className?: string }) {
+export function DifficultyMeter({
+  difficulty,
+  label,
+  className,
+}: {
+  difficulty: string;
+  /** Text next to the bars; defaults to the difficulty itself (e.g. "Intermediate 2" for a level). */
+  label?: string;
+  className?: string;
+}) {
   const level = Math.max(0, DIFFICULTY_LEVELS.indexOf(difficulty as (typeof DIFFICULTY_LEVELS)[number]));
   const tone = DIFFICULTY_TEXT[difficulty] ?? DIFFICULTY_TEXT.beginner;
 
@@ -56,7 +65,7 @@ export function DifficultyMeter({ difficulty, className }: { difficulty: string;
           />
         ))}
       </span>
-      {difficulty}
+      {label ?? difficulty}
     </span>
   );
 }

@@ -2,12 +2,15 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { Music2, RotateCcw } from "lucide-react";
+import { Music2, RotateCcw, TrendingUp } from "lucide-react";
 import { useGameStore } from "@/stores/gameStore";
 import { findSong } from "@/data/songs";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { Button } from "@/components/ui/button";
 import { AmbientArt } from "@/components/ambient-art";
+import { SongRankingCard } from "@/components/song-ranking-card";
+import { StarRating } from "@/components/star-rating";
+import { PROMOTION_STARS, levelLabel, parseLevelId } from "@/modules/game/levels";
 import { CelebrationBurst } from "@/components/celebration-burst";
 import { SongThumbnail, songHref } from "@/components/song-card";
 import { useCountUp } from "@/hooks/useCountUp";
@@ -24,6 +27,7 @@ function verdict(accuracy: number): { title: string; line: string } {
 
 export default function ResultsPage() {
   const lastResult = useGameStore((s) => s.lastResult);
+  const scoreSubmission = useGameStore((s) => s.scoreSubmission);
   const librarySongs = useLibraryStore((s) => s.songs);
   const score = useCountUp(lastResult?.score ?? 0);
 
@@ -44,6 +48,8 @@ export default function ResultsPage() {
 
   const song = findSong(lastResult.songId, librarySongs);
   const { title, line } = verdict(lastResult.accuracy);
+  const playedLevel = parseLevelId(lastResult.level);
+  const newLevel = parseLevelId(lastResult.levelUp);
 
   return (
     <div className="relative isolate mx-auto flex max-w-xl flex-col items-center px-4 pt-10 pb-14 text-center md:pt-14">
@@ -76,7 +82,31 @@ export default function ResultsPage() {
       <div className="my-8">
         <p className="font-display text-6xl font-bold text-secondary tabular-nums">{score}</p>
         <p className="mt-1 text-sm text-muted-foreground">points</p>
+        {lastResult.stars !== undefined && <StarRating value={lastResult.stars} className="mt-3" />}
+        {playedLevel && !newLevel && (
+          <p className="mt-2 text-sm text-muted-foreground">
+            {levelLabel(playedLevel)} · {PROMOTION_STARS} stars moves you up a level
+          </p>
+        )}
       </div>
+
+      {newLevel && (
+        <motion.div
+          role="status"
+          initial={{ opacity: 0, y: 8, scale: 0.98 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.35, ease: EASE_OUT, delay: 0.3 }}
+          className="glass mb-6 flex w-full items-center gap-3 rounded-2xl border-secondary/40 px-4 py-3 text-left"
+        >
+          <span aria-hidden className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-secondary/15 text-secondary">
+            <TrendingUp className="size-5" />
+          </span>
+          <p className="text-sm">
+            <span className="font-semibold text-foreground">Level up: {levelLabel(newLevel)}.</span>{" "}
+            <span className="text-muted-foreground">Your next song will hide a few more words.</span>
+          </p>
+        </motion.div>
+      )}
 
       <motion.dl
         initial={{ opacity: 0, y: 8 }}
@@ -95,6 +125,15 @@ export default function ResultsPage() {
           </div>
         ))}
       </motion.dl>
+
+      {lastResult.mode && (
+        <SongRankingCard
+          songId={lastResult.songId}
+          difficulty={lastResult.difficulty}
+          mode={lastResult.mode}
+          submission={scoreSubmission}
+        />
+      )}
 
       <div className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
         {song && (

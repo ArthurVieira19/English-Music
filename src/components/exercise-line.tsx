@@ -24,6 +24,10 @@ interface ExerciseLineViewProps {
   fuzzy?: boolean
   /** Renders multiple-choice blanks as plain placeholders instead of pill buttons — used when the choice pills are shown separately (see ExerciseChoicesView). */
   hideChoicePills?: boolean
+  /** Backspace in an empty blank: hear the line again. */
+  onReplay?: () => void
+  /** Enter in an empty blank: give up on that word. */
+  onSkip?: (tokenIndex: number) => void
 }
 
 export function ExerciseLineView({
@@ -35,14 +39,19 @@ export function ExerciseLineView({
   caption = false,
   fuzzy = true,
   hideChoicePills = false,
+  onReplay,
+  onSkip,
 }: ExerciseLineViewProps) {
   const inputRefs = useRef<Record<number, HTMLInputElement | null>>({})
+  // Word-bank blanks are answered from the bank, so they render as placeholders, not inputs.
+  const isWordBank = line.mode === "wordBank"
 
   // Keeps the player typing without ever having to click: focuses the next
   // unanswered typed blank whenever this line becomes active or an answer
   // in it is submitted. Multiple-choice tokens pick via click, not typing,
   // so they're skipped here.
   useEffect(() => {
+    if (isWordBank) return
     const nextToken = line.tokens.find(
       (token) =>
         token.isHidden &&
@@ -52,7 +61,7 @@ export function ExerciseLineView({
     if (nextToken) {
       inputRefs.current[nextToken.index]?.focus({ preventScroll: true })
     }
-  }, [line, exerciseIndex, answeredTokens])
+  }, [line, exerciseIndex, answeredTokens, isWordBank])
 
   return (
     <div
@@ -74,6 +83,9 @@ export function ExerciseLineView({
             caption={caption}
             fuzzy={fuzzy}
             hideChoicePills={hideChoicePills}
+            isWordBank={isWordBank}
+            onReplay={onReplay}
+            onSkip={onSkip ? () => onSkip(token.index) : undefined}
             inputRef={(el) => {
               inputRefs.current[token.index] = el
             }}
@@ -93,6 +105,9 @@ function ExerciseTokenView({
   caption,
   fuzzy,
   hideChoicePills,
+  isWordBank,
+  onReplay,
+  onSkip,
   inputRef,
 }: {
   token: ExerciseToken
@@ -103,6 +118,9 @@ function ExerciseTokenView({
   caption: boolean
   fuzzy: boolean
   hideChoicePills: boolean
+  isWordBank: boolean
+  onReplay?: () => void
+  onSkip?: () => void
   inputRef: (el: HTMLInputElement | null) => void
 }) {
   const attemptsUsed = wrongGuesses.length
@@ -146,6 +164,18 @@ function ExerciseTokenView({
           {token.raw}
         </motion.span>
       </WordDefinitionPopover>
+    )
+  }
+
+  if (isWordBank) {
+    const blankWidth = Math.max(token.answer?.length ?? 3, 3)
+    return (
+      <span
+        aria-label={token.answer ? `Missing word, ${token.answer.length} letters` : "Missing word"}
+        className={cn("tracking-widest", caption ? "text-white/50" : "text-primary/40")}
+      >
+        {"•".repeat(blankWidth)}
+      </span>
     )
   }
 
@@ -227,8 +257,17 @@ function ExerciseTokenView({
         }
       }}
       onKeyDown={(event) => {
-        if (event.key === "Enter" && value.trim().length > 0) {
-          onSubmit(value)
+        const isEmpty = value.trim().length === 0
+        if (event.key === "Enter") {
+          if (!isEmpty) onSubmit(value)
+          else if (onSkip && !event.repeat) onSkip()
+          return
+        }
+        // Only a fresh press on an already-empty blank: holding Backspace to
+        // clear a word must never roll the song back.
+        if (event.key === "Backspace" && value.length === 0 && onReplay && !event.repeat) {
+          event.preventDefault()
+          onReplay()
         }
       }}
       placeholder="···"

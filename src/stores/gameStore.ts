@@ -3,6 +3,7 @@ import type { ExerciseLine } from "@/types/ExerciseLine"
 import type { Difficulty } from "@/types/Difficulty"
 import type { GameMode } from "@/types/GameMode"
 import type { GameResult } from "@/types/Achievement"
+import type { ScoreSubmissionState } from "@/modules/leaderboard/songScores"
 
 export interface ApplyAnswerInput {
   exerciseIndex: number
@@ -29,6 +30,12 @@ interface GameState {
   /** `${exerciseIndex}:${tokenIndex}` -> whether that answer was correct. */
   answeredTokens: Record<string, boolean>
   /**
+   * `${exerciseIndex}:${tokenIndex}` -> the points that answer earned. Kept so
+   * that deliberately redoing a line takes its old points back first —
+   * otherwise a line could be re-answered over and over to pile up score.
+   */
+  tokenPoints: Record<string, number>
+  /**
    * `${exerciseIndex}:${tokenIndex}` -> the wrong guesses made so far on a
    * blank that is still open. Cleared once the blank is resolved (correct, or
    * out of attempts), so its length is the number of attempts already used.
@@ -36,6 +43,8 @@ interface GameState {
   wrongGuesses: Record<string, string[]>
   /** Result of the most recently finished song, read by the Results page. */
   lastResult: GameResult | null
+  /** Whether that result made it onto the song's ranking; null until a song has finished. */
+  scoreSubmission: ScoreSubmissionState | null
   /**
    * Set when playback crosses out of a line that still has unanswered
    * blanks — the video is paused and waits here until the player either
@@ -59,6 +68,7 @@ interface GameActions {
    */
   unanswerToken: (exerciseIndex: number, tokenIndex: number) => void
   setLastResult: (result: GameResult) => void
+  setScoreSubmission: (submission: ScoreSubmissionState | null) => void
   setPendingRetry: (lineIndex: number | null) => void
   reset: () => void
 }
@@ -74,8 +84,10 @@ const initialState: GameState = {
   correctAnswers: 0,
   totalAnswers: 0,
   answeredTokens: {},
+  tokenPoints: {},
   wrongGuesses: {},
   lastResult: null,
+  scoreSubmission: null,
   pendingRetryLineIndex: null,
 }
 
@@ -98,6 +110,7 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
         correctAnswers: state.correctAnswers + (isCorrect ? 1 : 0),
         totalAnswers: state.totalAnswers + 1,
         answeredTokens: { ...state.answeredTokens, [key]: isCorrect },
+        tokenPoints: { ...state.tokenPoints, [key]: points },
         wrongGuesses,
       }
     }),
@@ -112,17 +125,26 @@ export const useGameStore = create<GameState & GameActions>((set) => ({
       const wasAnswered = key in state.answeredTokens
       if (!wasAnswered && !(key in state.wrongGuesses)) return state
 
+      const wasCorrect = state.answeredTokens[key] === true
       const answeredTokens = { ...state.answeredTokens }
+      const tokenPoints = { ...state.tokenPoints }
       const wrongGuesses = { ...state.wrongGuesses }
+      const refund = tokenPoints[key] ?? 0
       delete answeredTokens[key]
+      delete tokenPoints[key]
       delete wrongGuesses[key]
       return {
         answeredTokens,
+        tokenPoints,
         wrongGuesses,
+        // The answer is being replaced, so its points and its tally go back out.
+        score: Math.max(0, state.score - refund),
+        correctAnswers: wasCorrect ? Math.max(0, state.correctAnswers - 1) : state.correctAnswers,
         totalAnswers: wasAnswered ? Math.max(0, state.totalAnswers - 1) : state.totalAnswers,
       }
     }),
   setLastResult: (lastResult) => set({ lastResult }),
+  setScoreSubmission: (scoreSubmission) => set({ scoreSubmission }),
   setPendingRetry: (pendingRetryLineIndex) => set({ pendingRetryLineIndex }),
   reset: () => set(initialState),
 }))

@@ -1,8 +1,10 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { render, screen, within, fireEvent } from "@testing-library/react"
 import { DifficultySelector } from "./difficulty-selector"
 import type { Song } from "@/types/Song"
+import { DEFAULT_SETTINGS } from "@/services/storage/storageService"
+import { useSettingsStore } from "@/stores/settingsStore"
 
 const song: Song = {
   id: "test-song",
@@ -18,6 +20,10 @@ const song: Song = {
 }
 
 describe("DifficultySelector", () => {
+  beforeEach(() => {
+    useSettingsStore.setState({ settings: DEFAULT_SETTINGS })
+  })
+
   it("renders the song title and artist", () => {
     render(<DifficultySelector song={song} onSelect={vi.fn()} />)
     expect(screen.getByRole("heading", { name: "Test Song" })).toBeInTheDocument()
@@ -26,7 +32,7 @@ describe("DifficultySelector", () => {
 
   it("renders all four difficulty options with a word-count hint", () => {
     render(<DifficultySelector song={song} onSelect={vi.fn()} />)
-    const group = screen.getByRole("group", { name: "Choose a difficulty" })
+    const group = screen.getByRole("group", { name: "Choose a level" })
     const buttons = within(group).getAllByRole("button")
 
     expect(buttons).toHaveLength(4)
@@ -41,14 +47,39 @@ describe("DifficultySelector", () => {
     })
   })
 
-  it("calls onSelect with the chosen difficulty", () => {
+  it("calls onSelect with the level a row offers", () => {
     const onSelect = vi.fn()
     render(<DifficultySelector song={song} onSelect={onSelect} />)
 
     fireEvent.click(screen.getByRole("button", { name: /expert/i }))
-    expect(onSelect).toHaveBeenCalledWith("expert")
+    expect(onSelect).toHaveBeenCalledWith({ difficulty: "expert", stage: 1 })
 
     fireEvent.click(screen.getByRole("button", { name: /beginner/i }))
-    expect(onSelect).toHaveBeenCalledWith("beginner")
+    expect(onSelect).toHaveBeenCalledWith({ difficulty: "beginner", stage: 1 })
+  })
+
+  it("offers stage 1 of every tier to a new player, marking beginner as their level", () => {
+    render(<DifficultySelector song={song} onSelect={vi.fn()} />)
+    const buttons = within(screen.getByRole("group", { name: "Choose a level" })).getAllByRole("button")
+
+    expect(buttons[0]).toHaveTextContent("Beginner 1")
+    expect(buttons[0]).toHaveTextContent("Your level")
+    expect(buttons[1]).toHaveTextContent("Intermediate 1")
+    expect(buttons[3]).toHaveTextContent("Expert")
+  })
+
+  it("offers the player's own stage, the top of easier tiers and the start of harder ones", () => {
+    useSettingsStore.setState({ settings: { ...DEFAULT_SETTINGS, currentLevel: "intermediate-2" } })
+    const onSelect = vi.fn()
+    render(<DifficultySelector song={song} onSelect={onSelect} />)
+    const buttons = within(screen.getByRole("group", { name: "Choose a level" })).getAllByRole("button")
+
+    expect(buttons[0]).toHaveTextContent("Beginner 3")
+    expect(buttons[1]).toHaveTextContent("Intermediate 2")
+    expect(buttons[1]).toHaveTextContent("Your level")
+    expect(buttons[2]).toHaveTextContent("Advanced 1")
+
+    fireEvent.click(buttons[1])
+    expect(onSelect).toHaveBeenCalledWith({ difficulty: "intermediate", stage: 2 })
   })
 })

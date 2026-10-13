@@ -1,6 +1,6 @@
 "use client"
 
-import { Keyboard, ListChecks } from "lucide-react"
+import { Keyboard, LayoutGrid, ListChecks } from "lucide-react"
 import type { Song } from "@/types/Song"
 import type { GameMode } from "@/types/GameMode"
 import { useSettingsStore } from "@/stores/settingsStore"
@@ -28,6 +28,13 @@ const GAME_MODE_OPTIONS: GameModeOption[] = [
     description: "Pick the missing word from 4 options.",
     icon: <ListChecks className="size-5" />,
     tone: "text-secondary",
+  },
+  {
+    value: "wordBank",
+    label: "Word bank",
+    description: "Every option is a word the song is about to ask for. Listen for which one comes now.",
+    icon: <LayoutGrid className="size-5" />,
+    tone: "text-orange-400",
   },
 ]
 

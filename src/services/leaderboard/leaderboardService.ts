@@ -1,4 +1,5 @@
 import { getSupabase } from "@/services/supabase/client"
+import { isMissingFunction } from "@/services/supabase/rpcErrors"
 import {
   LEADERBOARD_TOP,
   parseLeaderboardRows,
@@ -13,20 +14,6 @@ import {
 export type LeaderboardResult =
   | { ok: true; entries: LeaderboardEntry[] }
   | { ok: false; reason: "not-set-up" | "unavailable" }
-
-interface PostgrestLikeError {
-  code?: string
-  message?: string
-}
-
-/** PostgREST answers PGRST202 for an RPC it can't find; 42883 is Postgres' own "function does not exist". */
-function isMissingFunction(error: PostgrestLikeError): boolean {
-  return (
-    error.code === "PGRST202" ||
-    error.code === "42883" ||
-    Boolean(error.message?.includes("Could not find the function"))
-  )
-}
 
 export const leaderboardService = {
   async load(period: LeaderboardPeriod): Promise<LeaderboardResult> {

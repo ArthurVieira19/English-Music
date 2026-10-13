@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest"
 import {
+  COMBO_STREAK_CAP,
+  MAX_POINTS_PER_BLANK,
+  MAX_STARS,
   calculateAccuracy,
   calculateCompletion,
   calculateComboBonus,
+  calculateMaxScore,
+  calculateParScore,
   calculateSpeedBonus,
+  calculateStars,
   scoreAnswer,
 } from "./scoreEngine"
 
@@ -34,6 +40,75 @@ describe("calculateComboBonus", () => {
     expect(calculateComboBonus(0)).toBe(0)
     expect(calculateComboBonus(1)).toBe(10)
     expect(calculateComboBonus(5)).toBe(50)
+  })
+
+  it("stops growing once the streak cap is reached", () => {
+    const atCap = calculateComboBonus(COMBO_STREAK_CAP)
+
+    expect(atCap).toBe(COMBO_STREAK_CAP * 10)
+    expect(calculateComboBonus(COMBO_STREAK_CAP + 1)).toBe(atCap)
+    expect(calculateComboBonus(500)).toBe(atCap)
+  })
+
+  it("treats a negative combo as no combo", () => {
+    expect(calculateComboBonus(-3)).toBe(0)
+  })
+})
+
+describe("calculateMaxScore", () => {
+  it("is zero for a song with no blanks", () => {
+    expect(calculateMaxScore(0)).toBe(0)
+    expect(calculateMaxScore(-4)).toBe(0)
+  })
+
+  it("is the per-blank ceiling times the number of blanks", () => {
+    expect(MAX_POINTS_PER_BLANK).toBe(250)
+    expect(calculateMaxScore(3)).toBe(750)
+  })
+
+  it("grows linearly with the number of blanks", () => {
+    expect(calculateMaxScore(200) - calculateMaxScore(100)).toBe(100 * MAX_POINTS_PER_BLANK)
+  })
+
+  it("is never beaten by the score engine, even with the combo at its ceiling from the start", () => {
+    let total = 0
+    for (let i = 0; i < 40; i++) {
+      total += scoreAnswer({ isCorrect: true, responseTimeMs: 0, timeLimitMs: 5000, combo: 500 }).points
+    }
+
+    expect(total).toBe(calculateMaxScore(40))
+  })
+
+  it("is above the par score, which a first playthrough is measured against", () => {
+    expect(calculateMaxScore(30)).toBeGreaterThan(calculateParScore(30))
+  })
+})
+
+describe("calculateStars", () => {
+  it("gives no stars for no score or no blanks", () => {
+    expect(calculateStars(0, 20)).toBe(0)
+    expect(calculateStars(500, 0)).toBe(0)
+  })
+
+  it("rates a flawless average-pace run at the maximum", () => {
+    expect(calculateStars(calculateParScore(30), 30)).toBe(MAX_STARS)
+  })
+
+  it("never exceeds the maximum, even for a faster-than-par run", () => {
+    expect(calculateStars(calculateMaxScore(30), 30)).toBe(MAX_STARS)
+  })
+
+  it("moves in half-star steps", () => {
+    const par = calculateParScore(30)
+
+    expect(calculateStars(par * 0.5, 30)).toBe(2.5)
+    expect(calculateStars(par * 0.29, 30)).toBe(1)
+    expect(calculateStars(par * 0.31, 30)).toBe(1.5)
+  })
+
+  it("rates the same fraction of par the same on a short song and a long one", () => {
+    // 0.65 sits mid-step, so floating-point noise can't tip one song into a different half-star.
+    expect(calculateStars(calculateParScore(8) * 0.65, 8)).toBe(calculateStars(calculateParScore(120) * 0.65, 120))
   })
 })
 

@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { findSong } from "@/data/songs";
-import type { Difficulty } from "@/types/Difficulty";
 import type { GameMode } from "@/types/GameMode";
 import { useLibraryStore } from "@/stores/libraryStore";
 import { useSettingsStore } from "@/stores/settingsStore";
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { GameScreen } from "@/components/game-screen";
 import { GameModeSelector } from "@/components/game-mode-selector";
 import { DifficultySelector } from "@/components/difficulty-selector";
+import { levelId, type Level } from "@/modules/game/levels";
 
 /** Resolves a song from the built-in catalog or the global library. */
 export function GameScreenLoader({ songId }: { songId: string }) {
@@ -19,14 +19,14 @@ export function GameScreenLoader({ songId }: { songId: string }) {
   const song = findSong(songId, librarySongs);
 
   const [mode, setMode] = useState<GameMode | null>(null);
-  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const [level, setLevel] = useState<Level | null>(null);
 
   // A different song means starting over: make the player pick a mode and
   // difficulty for it too, instead of silently carrying over the last
   // song's choices.
   useEffect(() => {
     setMode(null);
-    setDifficulty(null);
+    setLevel(null);
   }, [songId]);
 
   if (!song) {
@@ -52,18 +52,19 @@ export function GameScreenLoader({ songId }: { songId: string }) {
     );
   }
 
-  if (!difficulty) {
+  if (!level) {
     return (
       <DifficultySelector
         song={song}
         onBack={() => setMode(null)}
         onSelect={(selected) => {
-          updateSettings({ defaultDifficulty: selected });
-          setDifficulty(selected);
+          // The level a player picks becomes their level: the next song offers it again.
+          updateSettings({ defaultDifficulty: selected.difficulty, currentLevel: levelId(selected) });
+          setLevel(selected);
         }}
       />
     );
   }
 
-  return <GameScreen song={song} difficulty={difficulty} mode={mode} />;
+  return <GameScreen song={song} level={level} mode={mode} />;
 }

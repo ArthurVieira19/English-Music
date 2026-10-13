@@ -29,7 +29,7 @@ const ROUND: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Gauge,
     title: "Choose how hard",
-    body: "Type each word or pick from four options, then a level: Beginner hides a few words, Expert hides them all.",
+    body: "Type each word, pick from four options, or use the word bank. Then a level: ten steps from Beginner 1 to Expert, and a 4-star run moves you up one.",
   },
   {
     icon: Ear,
@@ -42,7 +42,7 @@ const HELPERS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: RotateCcw,
     title: "Missed it? It waits for you",
-    body: "If a line ends before you finish, the video pauses there. Fill the blank when you're ready, or replay the line.",
+    body: "If a line ends before you finish, the music fades and stops right there. Fill the blank when you're ready, or replay the line.",
   },
   {
     icon: Turtle,
@@ -52,7 +52,7 @@ const HELPERS: { icon: LucideIcon; title: string; body: string }[] = [
   {
     icon: Keyboard,
     title: "Close enough counts",
-    body: "A missing apostrophe or one letter off still confirms the blank. You don't even need Enter.",
+    body: "A missing apostrophe or one letter off still confirms the blank. In an empty blank, Backspace replays the line and Enter skips the word; on a phone, swipe the line.",
   },
   {
     icon: BookOpen,

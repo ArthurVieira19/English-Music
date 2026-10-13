@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { Flame, Pause, Play, Repeat, RotateCcw, SkipForward, Star } from "lucide-react";
 import type { Song } from "@/types/Song";
-import type { Difficulty } from "@/types/Difficulty";
 import type { GameMode } from "@/types/GameMode";
 import { useGameController } from "@/hooks/useGameController";
 import { useGameShortcuts } from "@/hooks/useGameShortcuts";
@@ -16,6 +15,10 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { LyricsPanel } from "@/components/lyrics-panel";
 import { ExerciseChoicesView } from "@/components/exercise-line";
 import { PlaybackRateControl } from "@/components/playback-rate-control";
+import { SyncControl } from "@/components/sync-control";
+import { WordBank } from "@/components/word-bank";
+import { levelLabel, type Level } from "@/modules/game/levels";
+import { hashStringToSeed } from "@/modules/game/seededRandom";
 import { MistakeNote, type MistakeNoteData } from "@/components/mistake-note";
 import { AmbientArt } from "@/components/ambient-art";
 import { DifficultyMeter, SongThumbnail } from "@/components/song-card";
@@ -29,16 +32,16 @@ type ScoreFlash = { id: number; label: string; tone: "hit" | "miss" };
 
 export function GameScreen({
   song,
-  difficulty,
+  level,
   mode,
 }: {
   song: Song;
-  difficulty: Difficulty;
+  level: Level;
   mode: GameMode;
 }) {
   const router = useRouter();
   const elementId = `youtube-player-${song.id}`;
-  const controller = useGameController(song, elementId, difficulty, mode);
+  const controller = useGameController(song, elementId, level, mode);
 
   const exercises = useGameStore((s) => s.exercises);
   const activeExerciseIndex = useGameStore((s) => s.activeExerciseIndex);
@@ -146,7 +149,7 @@ export function GameScreen({
             <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
               <span className="truncate">{song.artist}</span>
               <span aria-hidden className="hidden sm:inline">·</span>
-              <DifficultyMeter difficulty={difficulty} className="hidden sm:inline-flex" />
+              <DifficultyMeter difficulty={level.difficulty} label={levelLabel(level)} className="hidden sm:inline-flex" />
             </p>
           </div>
         </div>
@@ -191,6 +194,15 @@ export function GameScreen({
             </div>
           </div>
 
+          <div className="flex justify-end">
+            <SyncControl
+              offset={controller.syncOffset}
+              onChange={controller.setSyncOffset}
+              onTap={controller.syncToCurrentLine}
+              disabled={!controller.isReady}
+            />
+          </div>
+
           <AnimatePresence initial={false}>
             {isPausedForRetry && (
               <motion.div
@@ -232,6 +244,19 @@ export function GameScreen({
             </div>
           )}
 
+          {mode === "wordBank" && activeLine?.mode === "wordBank" && (
+            <div className="glass rounded-2xl p-3 sm:p-4">
+              <WordBank
+                exercises={exercises}
+                lineIndex={activeExerciseIndex}
+                answeredTokens={answeredTokens}
+                wrongGuesses={wrongGuesses}
+                seed={hashStringToSeed(song.id)}
+                onPick={handleSubmit}
+              />
+            </div>
+          )}
+
           {/* Desktop: the space under the video holds the cheat sheet, so the lyrics column stays only lyrics. */}
           <div className="hidden flex-col gap-3 rounded-xl border border-border px-4 py-3.5 lg:flex">
             <p className="text-sm text-muted-foreground">
@@ -250,10 +275,12 @@ export function GameScreen({
             onSubmit={handleSubmit}
             onLineClick={controller.seekToLine}
             fuzzy={fuzzyMatching}
+            onReplay={controller.replayLine}
+            onSkipWord={controller.skipWord}
           />
           {exercises.length > 0 && (
             <p className="px-2 text-xs text-muted-foreground lg:hidden">
-              Tap any word for its definition · tap a line to jump there
+              Tap any word for its definition · tap a line to jump there · swipe the current line to skip a word
             </p>
           )}
         </div>

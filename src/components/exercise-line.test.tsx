@@ -155,3 +155,86 @@ describe("ExerciseLineView", () => {
     expect(screen.getByLabelText("cat — incorrect")).toBeInTheDocument()
   })
 })
+
+describe("ExerciseLineView keys in an empty blank", () => {
+  const blank = () => makeLine([{ index: 3, raw: "world", isHidden: true, answer: "world" }])
+
+  function setup() {
+    const onReplay = vi.fn()
+    const onSkip = vi.fn()
+    const onSubmit = vi.fn()
+    render(
+      <ExerciseLineView
+        line={blank()}
+        exerciseIndex={0}
+        answeredTokens={{}}
+        onSubmit={onSubmit}
+        onReplay={onReplay}
+        onSkip={onSkip}
+      />,
+    )
+    return { input: screen.getByLabelText("Missing word, 5 letters"), onReplay, onSkip, onSubmit }
+  }
+
+  it("replays the line on Backspace", () => {
+    const { input, onReplay } = setup()
+
+    fireEvent.keyDown(input, { key: "Backspace" })
+
+    expect(onReplay).toHaveBeenCalledTimes(1)
+  })
+
+  it("skips that word on Enter", () => {
+    const { input, onSkip, onSubmit } = setup()
+
+    fireEvent.keyDown(input, { key: "Enter" })
+
+    expect(onSkip).toHaveBeenCalledWith(3)
+    expect(onSubmit).not.toHaveBeenCalled()
+  })
+
+  it("deletes normally, without replaying, while there is text to delete", () => {
+    const { input, onReplay } = setup()
+    fireEvent.change(input, { target: { value: "wor" } })
+
+    fireEvent.keyDown(input, { key: "Backspace" })
+
+    expect(onReplay).not.toHaveBeenCalled()
+  })
+
+  it("submits rather than skips on Enter when something was typed", () => {
+    const { input, onSkip, onSubmit } = setup()
+    fireEvent.change(input, { target: { value: "wor" } })
+
+    fireEvent.keyDown(input, { key: "Enter" })
+
+    expect(onSubmit).toHaveBeenCalledWith(3, "wor")
+    expect(onSkip).not.toHaveBeenCalled()
+  })
+
+  it("ignores a held key, so holding Backspace to clear a word never rolls the song back", () => {
+    const { input, onReplay, onSkip } = setup()
+
+    fireEvent.keyDown(input, { key: "Backspace", repeat: true })
+    fireEvent.keyDown(input, { key: "Enter", repeat: true })
+
+    expect(onReplay).not.toHaveBeenCalled()
+    expect(onSkip).not.toHaveBeenCalled()
+  })
+})
+
+describe("ExerciseLineView in word-bank mode", () => {
+  it("shows blanks as placeholders, answered from the bank rather than typed", () => {
+    const line: ExerciseLine = {
+      ...makeLine([
+        { index: 0, raw: "hello", isHidden: false },
+        { index: 1, raw: "world", isHidden: true, answer: "world" },
+      ]),
+      mode: "wordBank",
+    }
+    render(<ExerciseLineView line={line} exerciseIndex={0} answeredTokens={{}} onSubmit={vi.fn()} />)
+
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument()
+    expect(screen.getByLabelText("Missing word, 5 letters")).toHaveTextContent("•••••")
+  })
+})

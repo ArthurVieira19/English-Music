@@ -60,4 +60,7 @@ export const GAME_SHORTCUT_LEGEND: { keys: string; label: string }[] = [
   { keys: "Alt + P", label: "Play / pause" },
   { keys: "Alt + B", label: "Back 5s" },
   { keys: "Alt + S", label: "Skip line" },
+  // Handled by the blank itself (exercise-line.tsx), only while it's empty.
+  { keys: "Backspace", label: "Replay (in an empty blank)" },
+  { keys: "Enter", label: "Skip word (in an empty blank)" },
 ]

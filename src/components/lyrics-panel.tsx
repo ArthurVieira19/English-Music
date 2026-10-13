@@ -6,6 +6,7 @@ import type { ExerciseLine } from "@/types/ExerciseLine"
 import { ExerciseLineView } from "@/components/exercise-line"
 import { answeredTokenKey } from "@/stores/gameStore"
 import { WordDefinitionPopover } from "@/components/word-definition-popover"
+import { detectSwipe, type SwipePoint } from "@/modules/game/swipe"
 import { cn } from "@/lib/utils"
 
 interface LyricsPanelProps {
@@ -17,6 +18,10 @@ interface LyricsPanelProps {
   /** Seeks the video to a clicked line AND makes it the active, writable line. */
   onLineClick: (lineIndex: number) => void
   fuzzy?: boolean
+  /** Backspace in an empty blank. */
+  onReplay?: () => void
+  /** Enter in an empty blank (that blank), or a sideways swipe on the active line (its first open blank). */
+  onSkipWord?: (tokenIndex?: number) => void
 }
 
 /**
@@ -33,8 +38,11 @@ export function LyricsPanel({
   onSubmit,
   onLineClick,
   fuzzy = true,
+  onReplay,
+  onSkipWord,
 }: LyricsPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
+  const swipeStartRef = useRef<SwipePoint | null>(null)
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
   // Scrolls only this panel. `scrollIntoView` also scrolls every scrollable
@@ -69,7 +77,21 @@ export function LyricsPanel({
                   ref={(el) => {
                     lineRefs.current[index] = el
                   }}
-                  className="relative px-3 py-3"
+                  // pan-y: vertical drags still scroll the lyrics, sideways ones reach the swipe handler.
+                  className="relative touch-pan-y px-3 py-3"
+                  onPointerDown={(event) => {
+                    swipeStartRef.current =
+                      event.pointerType === "touch" ? { x: event.clientX, y: event.clientY, time: event.timeStamp } : null
+                  }}
+                  onPointerUp={(event) => {
+                    const start = swipeStartRef.current
+                    swipeStartRef.current = null
+                    if (!start || !onSkipWord) return
+                    if (detectSwipe(start, { x: event.clientX, y: event.clientY, time: event.timeStamp })) onSkipWord()
+                  }}
+                  onPointerCancel={() => {
+                    swipeStartRef.current = null
+                  }}
                 >
                   {/* Shared layoutId: the highlight glides from the previous
                       line to this one instead of blinking in place. */}
@@ -88,6 +110,8 @@ export function LyricsPanel({
                       onSubmit={onSubmit}
                       fuzzy={fuzzy}
                       hideChoicePills
+                      onReplay={onReplay}
+                      onSkip={onSkipWord}
                     />
                   </div>
                 </div>

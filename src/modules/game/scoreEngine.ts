@@ -1,6 +1,14 @@
 const BASE_SCORE = 100
 const MAX_SPEED_BONUS = 50
 const COMBO_BONUS_PER_STREAK = 10
+/**
+ * The combo bonus stops growing after this many answers in a row. Without a
+ * ceiling it grows linearly forever, so a flawless long song would score
+ * quadratically more than a flawless short one and the ranking would reward
+ * song length, not listening. The server-side ceiling in
+ * supabase/migrations/20261013120000_song_scores.sql mirrors this value.
+ */
+export const COMBO_STREAK_CAP = 10
 
 /** How many guesses a player gets for each blank before it is revealed as a miss. */
 export const MAX_ATTEMPTS = 2
@@ -38,7 +46,54 @@ export function calculateSpeedBonus(responseTimeMs: number, timeLimitMs: number)
 }
 
 export function calculateComboBonus(combo: number): number {
-  return Math.max(0, combo) * COMBO_BONUS_PER_STREAK
+  return Math.min(Math.max(0, combo), COMBO_STREAK_CAP) * COMBO_BONUS_PER_STREAK
+}
+
+/** Sum of the combo bonuses of a run that answers `blanks` blanks in a row without a miss. */
+function flawlessComboBonusTotal(blanks: number): number {
+  let total = 0
+  for (let streak = 1; streak <= blanks; streak++) total += calculateComboBonus(streak)
+  return total
+}
+
+/**
+ * The most a single blank can ever pay: first try, instantly, combo at its
+ * ceiling. Redoing a line after jumping back to it can put a player at the
+ * combo ceiling from the first blank, so this per-blank bound — not the
+ * slower ramp-up of a first playthrough — is the true upper limit.
+ */
+export const MAX_POINTS_PER_BLANK = BASE_SCORE + MAX_SPEED_BONUS + COMBO_STREAK_CAP * COMBO_BONUS_PER_STREAK
+
+/**
+ * The most a song with `blanks` blanks can ever pay. Nothing a real player
+ * does can beat it, so the server rejects any submitted score above it.
+ */
+export function calculateMaxScore(blanks: number): number {
+  if (blanks <= 0) return 0
+  return blanks * MAX_POINTS_PER_BLANK
+}
+
+/**
+ * The benchmark for a "perfect" run: flawless, answering at an average pace
+ * (half the speed bonus). Stars are measured against this rather than the
+ * theoretical ceiling, which would put five stars out of any human's reach.
+ */
+export function calculateParScore(blanks: number): number {
+  if (blanks <= 0) return 0
+  return blanks * (BASE_SCORE + MAX_SPEED_BONUS / 2) + flawlessComboBonusTotal(blanks)
+}
+
+export const MAX_STARS = 5
+
+/**
+ * Star rating from 0 to 5 in half-star steps, relative to the song's own par
+ * score — so a short song and a long one are rated on the same scale and
+ * scores can be compared across songs.
+ */
+export function calculateStars(score: number, blanks: number): number {
+  const par = calculateParScore(blanks)
+  if (par <= 0 || score <= 0) return 0
+  return Math.min(MAX_STARS, Math.floor((score / par) * MAX_STARS * 2) / 2)
 }
 
 /**

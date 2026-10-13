@@ -1,1 +1,1 @@
-export type GameMode = "typing" | "multipleChoice" | "fullPhrase"
+export type GameMode = "typing" | "multipleChoice" | "wordBank" | "fullPhrase"
