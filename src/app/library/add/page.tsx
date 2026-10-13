@@ -7,10 +7,11 @@ import { AlertTriangle, ArrowLeft, Check, ExternalLink, Loader2, Search, Sparkle
 import type { Song } from "@/types/Song";
 import { parseLRC } from "@/modules/lyrics/lrcParser";
 import { estimateSongDifficulty } from "@/modules/lyrics/estimateSongDifficulty";
-import { rankLyricsMatches, type RankedMatch } from "@/modules/lyrics/rankLyricsMatches";
+import { autoPick, rankLyricsMatches, DURATION_TOLERANCE_SECONDS } from "@/modules/lyrics/rankLyricsMatches";
+import { shiftLyrics } from "@/modules/lyrics/shiftLyrics";
 import { parseYoutubeId } from "@/modules/youtube/parseYoutubeId";
 import { parseVideoTitle, youtubeSearchUrl } from "@/modules/youtube/parseVideoTitle";
-import { searchSyncedLyrics, type LrclibResult } from "@/services/lyrics/lrclibClient";
+import { getSyncedLyricsForLength, searchSyncedLyrics, type LrclibResult } from "@/services/lyrics/lrclibClient";
 import { lookupYoutubeVideo, type YoutubeVideoInfo } from "@/services/youtube/youtubeOEmbed";
 import { SONGS } from "@/data/songs";
 import { useAuthStore } from "@/stores/authStore";
@@ -18,6 +19,7 @@ import { useLibraryStore } from "@/stores/libraryStore";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LyricsSyncCheck } from "@/components/lyrics-sync-check";
 import { cn } from "@/lib/utils";
 
 /** Wait this long after the link stops changing before asking YouTube about it. */
@@ -28,6 +30,13 @@ function formatDuration(seconds: number): string {
   const mins = Math.floor(totalSeconds / 60);
   const secs = (totalSeconds % 60).toString().padStart(2, "0");
   return `${mins}:${secs}`;
+}
+
+/** "same length as the video", "22s longer than the video", "1:12 shorter than the video". */
+function describeDurationDelta(delta: number): string {
+  if (Math.abs(delta) <= DURATION_TOLERANCE_SECONDS) return "same length as the video";
+  const amount = Math.abs(delta) >= 60 ? formatDuration(Math.abs(delta)) : `${Math.round(Math.abs(delta))}s`;
+  return `${amount} ${delta > 0 ? "longer" : "shorter"} than the video`;
 }
 
 function slugify(text: string): string {
@@ -78,13 +87,36 @@ export default function AddSongPage() {
 
   const [lyricsSearchLoading, setLyricsSearchLoading] = useState(false);
   const [lyricsSearchError, setLyricsSearchError] = useState<string | null>(null);
-  const [lyricsMatches, setLyricsMatches] = useState<RankedMatch<LrclibResult>[]>([]);
+  const [lyricsResults, setLyricsResults] = useState<LrclibResult[]>([]);
+  const [searchedFor, setSearchedFor] = useState({ title: "", artist: "" });
   const [selectedLyricsId, setSelectedLyricsId] = useState<number | null>(null);
+  // Set by an automatic search: pick a sure match as soon as one shows up (the video's length may arrive later).
+  const autoPickPendingRef = useRef(false);
+  // The (title, artist, length) the length-exact lookup already ran for, so it runs once per combination.
+  const lengthLookupRef = useRef("");
+
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  /** Seconds the chosen lyrics are moved to fit this video; baked into the song on save. */
+  const [syncOffset, setSyncOffset] = useState(0);
   // Bumped by every new search, so a slow answer to an older one is dropped.
   const searchRunRef = useRef(0);
 
   const youtubeId = parseYoutubeId(youtubeInput);
   const isDuplicate = youtubeId !== null && [...SONGS, ...librarySongs].some((s) => s.youtubeId === youtubeId);
+
+  const lyricsMatches = useMemo(
+    () => rankLyricsMatches(lyricsResults, { ...searchedFor, videoDuration }),
+    [lyricsResults, searchedFor, videoDuration],
+  );
+  const parsedLyrics = useMemo(() => parseLRC(lyricsInput), [lyricsInput]);
+  const selectedMatch = lyricsMatches.find((match) => match.result.id === selectedLyricsId) ?? null;
+  const noVersionFitsVideo =
+    videoDuration !== null && lyricsMatches.length > 0 && !lyricsMatches.some((m) => m.timingMatches === true && m.confidence !== "weak");
+  // The video runs longer than the chosen lyrics' recording: most often an intro, so offer that as the first guess.
+  const suggestedOffset =
+    selectedMatch?.durationDelta != null && selectedMatch.durationDelta < -DURATION_TOLERANCE_SECONDS
+      ? -selectedMatch.durationDelta
+      : null;
 
   const estimatedDifficulty = useMemo(() => {
     const parsed = parseLRC(lyricsInput);
@@ -100,24 +132,17 @@ export default function AddSongPage() {
     const run = ++searchRunRef.current;
     setLyricsSearchLoading(true);
     setLyricsSearchError(null);
-    setLyricsMatches([]);
+    setLyricsResults([]);
+    autoPickPendingRef.current = automatic;
 
     try {
       const results = await searchSyncedLyrics(searchTitle.trim(), searchArtist.trim());
       if (run !== searchRunRef.current) return;
 
-      const ranked = rankLyricsMatches(results, { title: searchTitle, artist: searchArtist });
-      if (ranked.length === 0) {
+      setSearchedFor({ title: searchTitle, artist: searchArtist });
+      setLyricsResults(results);
+      if (results.length === 0) {
         setLyricsSearchError("No synced lyrics found. Check the title and artist, or paste them manually below.");
-        return;
-      }
-      setLyricsMatches(ranked);
-
-      // A sure match fills itself in, unless the admin already chose or typed lyrics.
-      const [best] = ranked;
-      if (automatic && best.confidence === "exact" && !editedRef.current.lyrics && best.result.syncedLyrics) {
-        setLyricsInput(best.result.syncedLyrics);
-        setSelectedLyricsId(best.result.id);
       }
     } catch {
       if (run === searchRunRef.current) setLyricsSearchError("Lyrics search failed. Paste them manually below.");
@@ -125,6 +150,42 @@ export default function AddSongPage() {
       if (run === searchRunRef.current) setLyricsSearchLoading(false);
     }
   }
+
+  // Fill in a sure match (right song, timed for this video's length) once
+  // both the results and the video's length are in, unless the admin has
+  // already chosen or typed lyrics.
+  useEffect(() => {
+    if (!autoPickPendingRef.current || editedRef.current.lyrics) return;
+    const pick = autoPick(lyricsMatches);
+    if (!pick?.result.syncedLyrics) return;
+
+    autoPickPendingRef.current = false;
+    setLyricsInput(pick.result.syncedLyrics);
+    setSelectedLyricsId(pick.result.id);
+    setSyncOffset(0);
+  }, [lyricsMatches]);
+
+  // The search returns at most 20 versions and can miss the one cut to the
+  // video's length. If none of them fits, ask lrclib for that length directly.
+  useEffect(() => {
+    if (videoDuration === null || lyricsResults.length === 0 || !noVersionFitsVideo) return;
+    const key = `${searchedFor.title}|${searchedFor.artist}|${Math.round(videoDuration)}`;
+    if (lengthLookupRef.current === key || !searchedFor.title.trim() || !searchedFor.artist.trim()) return;
+    lengthLookupRef.current = key;
+
+    let cancelled = false;
+    getSyncedLyricsForLength(searchedFor.title.trim(), searchedFor.artist.trim(), videoDuration)
+      .then((found) => {
+        if (cancelled || !found) return;
+        setLyricsResults((current) => (current.some((r) => r.id === found.id) ? current : [found, ...current]));
+      })
+      .catch(() => {
+        // Only a bonus on top of the search: if it fails, the list and the sync check still work.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [videoDuration, lyricsResults, searchedFor, noVersionFitsVideo]);
 
   // A new video link: read its title from YouTube, guess the song from it and
   // go looking for the lyrics, all without the admin pressing anything.
@@ -136,6 +197,8 @@ export default function AddSongPage() {
 
     // Show the thumbnail (and a duplicate warning) at once; ask YouTube once the link settles.
     setVideo({ status: "loading", id: youtubeId });
+    setVideoDuration(null);
+    setSyncOffset(0);
     let cancelled = false;
     const timer = setTimeout(async () => {
       const lookup = await lookupYoutubeVideo(youtubeId);
@@ -171,6 +234,7 @@ export default function AddSongPage() {
     editedRef.current.lyrics = true;
     setLyricsInput(result.syncedLyrics);
     setSelectedLyricsId(result.id);
+    setSyncOffset(0);
   }
 
   async function handleSubmit(event: FormEvent) {
@@ -187,7 +251,8 @@ export default function AddSongPage() {
       return;
     }
 
-    const lyrics = parseLRC(lyricsInput);
+    // The timing correction from the sync check becomes part of the song itself.
+    const lyrics = shiftLyrics(parsedLyrics, syncOffset);
     if (lyrics.length === 0) {
       setError(
         "No valid timestamped lines found. Lyrics must use LRC format, e.g. [00:12.50]Some line.",
@@ -248,8 +313,8 @@ export default function AddSongPage() {
         <CardHeader>
           <CardTitle className="font-display text-2xl">Add a song</CardTitle>
           <p className="text-sm text-muted-foreground">
-            Paste the YouTube link and the rest fills itself in: title and artist from the video, synced lyrics
-            from lrclib.net. Check them, then add. Songs you add join the global library and are visible to every
+            Paste the YouTube link and the rest fills itself in: title and artist from the video, and synced
+            lyrics from lrclib.net timed for a recording as long as the video. Check the timing, then add. Songs you add join the global library and are visible to every
             player, so make sure you have the rights to use the content.
           </p>
         </CardHeader>
@@ -274,7 +339,7 @@ export default function AddSongPage() {
                   className="inline-flex items-center gap-1 self-start text-xs text-muted-foreground hover:text-foreground"
                 >
                   <ExternalLink aria-hidden className="size-3" />
-                  Find &ldquo;{[artist.trim(), title.trim()].filter(Boolean).join(" – ")}&rdquo; on YouTube
+                  Find the official audio of &ldquo;{[artist.trim(), title.trim()].filter(Boolean).join(" – ")}&rdquo; on YouTube
                 </a>
               ) : (
                 <p className="text-xs text-muted-foreground">
@@ -350,7 +415,7 @@ export default function AddSongPage() {
                   aria-label="Lyrics found"
                   className="flex max-h-56 flex-col gap-1 overflow-y-auto rounded-md border border-border p-1.5"
                 >
-                  {lyricsMatches.map(({ result, confidence }, index) => {
+                  {lyricsMatches.map(({ result, confidence, durationDelta, timingMatches }, index) => {
                     const selected = result.id === selectedLyricsId;
                     return (
                       <button
@@ -369,6 +434,11 @@ export default function AddSongPage() {
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {result.albumName || "Unknown album"} · {formatDuration(result.duration)}
+                            {durationDelta !== null && (
+                              <span className={cn(timingMatches ? "text-secondary" : "text-orange-400")}>
+                                {" "}· {describeDurationDelta(durationDelta)}
+                              </span>
+                            )}
                           </span>
                         </span>
                         {selected ? (
@@ -377,7 +447,8 @@ export default function AddSongPage() {
                           </span>
                         ) : (
                           index === 0 &&
-                          confidence !== "weak" && (
+                          confidence !== "weak" &&
+                          timingMatches !== false && (
                             <span className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
                               <Sparkles aria-hidden className="size-3" /> Best match
                             </span>
@@ -386,6 +457,30 @@ export default function AddSongPage() {
                       </button>
                     );
                   })}
+                </div>
+              )}
+
+              {noVersionFitsVideo && (
+                <div role="status" className="flex flex-col gap-1 rounded-md border border-orange-400/40 bg-orange-400/10 p-2.5 text-sm">
+                  <p className="flex items-start gap-1.5">
+                    <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-orange-400" />
+                    <span>
+                      None of these versions is as long as this video ({formatDuration(videoDuration ?? 0)}), so their
+                      timing won&apos;t line up on its own. Music videos often add an intro or a scene.
+                    </span>
+                  </p>
+                  <p className="pl-5 text-xs text-muted-foreground">
+                    Pick the right song anyway and line it up with one tap below, or use the song&apos;s{" "}
+                    <a
+                      href={youtubeSearchUrl(title, artist)}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-foreground underline underline-offset-2"
+                    >
+                      official audio upload
+                    </a>
+                    , which usually matches exactly.
+                  </p>
                 </div>
               )}
 
@@ -414,6 +509,17 @@ export default function AddSongPage() {
                 )}
               </p>
             </div>
+
+            {youtubeId && !(video.status === "failed" && video.reason !== "unavailable") && (
+              <LyricsSyncCheck
+                youtubeId={youtubeId}
+                lines={parsedLyrics}
+                offset={syncOffset}
+                onOffsetChange={setSyncOffset}
+                onDuration={setVideoDuration}
+                suggestedOffset={suggestedOffset}
+              />
+            )}
 
             {error && (
               <p role="alert" className="text-sm text-destructive">

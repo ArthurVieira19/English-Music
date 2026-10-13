@@ -5,6 +5,7 @@ type YouTubePlayerInstance = {
   pauseVideo(): void
   seekTo(seconds: number, allowSeekAhead: boolean): void
   getCurrentTime(): number
+  getDuration(): number
   setPlaybackRate(rate: number): void
   setVolume(volume: number): void
   destroy(): void
@@ -142,6 +143,16 @@ export class YouTubePlayer implements MediaPlayer {
     // from a rAF loop that starts polling immediately on mount) throws.
     if (!this.ready || !this.player) return 0
     return this.player.getCurrentTime()
+  }
+
+  /**
+   * The video's length in seconds, or 0 while YouTube hasn't loaded its
+   * details yet (it can take until playback starts). Not part of MediaPlayer:
+   * only the add-song page needs it, to match lyrics to the video.
+   */
+  getDuration(): number {
+    if (!this.ready || !this.player) return 0
+    return this.player.getDuration() || 0
   }
 
   setPlaybackRate(rate: number): void {

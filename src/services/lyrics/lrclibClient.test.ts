@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest"
-import { searchSyncedLyrics, type LrclibResult } from "./lrclibClient"
+import { getSyncedLyricsForLength, searchSyncedLyrics, type LrclibResult } from "./lrclibClient"
 
 function makeResult(overrides: Partial<LrclibResult> = {}): LrclibResult {
   return {
@@ -86,5 +86,34 @@ describe("searchSyncedLyrics", () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     expect(fetchMock.mock.calls[0][0]).not.toContain("artist_name")
+  })
+})
+
+describe("getSyncedLyricsForLength", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it("asks for the version timed for that length", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(makeResult({ duration: 251 })))
+    vi.stubGlobal("fetch", fetchMock)
+
+    const result = await getSyncedLyricsForLength("Die With A Smile", "Bruno Mars", 251.4)
+
+    expect(result?.duration).toBe(251)
+    expect(fetchMock.mock.calls[0][0]).toContain("/api/get?")
+    expect(fetchMock.mock.calls[0][0]).toContain("duration=251")
+  })
+
+  it("returns null when lrclib has no such version", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({ ok: false, status: 404, json: async () => ({}) } as Response))
+
+    await expect(getSyncedLyricsForLength("x", "y", 200)).resolves.toBeNull()
+  })
+
+  it("returns null for a version without synced lyrics", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(jsonResponse(makeResult({ syncedLyrics: null }))))
+
+    await expect(getSyncedLyricsForLength("x", "y", 200)).resolves.toBeNull()
   })
 })

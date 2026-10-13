@@ -57,13 +57,13 @@ describe("artistFromChannel", () => {
 })
 
 describe("youtubeSearchUrl", () => {
-  it("searches for the official video of the song", () => {
+  it("searches for the official audio, whose timing matches synced lyrics", () => {
     expect(youtubeSearchUrl("Hello", "Adele")).toBe(
-      "https://www.youtube.com/results?search_query=Adele%20Hello%20official%20video",
+      "https://www.youtube.com/results?search_query=Adele%20Hello%20official%20audio",
     )
   })
 
   it("works with only one of the two filled in", () => {
-    expect(youtubeSearchUrl("Hello", "  ")).toContain("search_query=Hello%20official%20video")
+    expect(youtubeSearchUrl("Hello", "  ")).toContain("search_query=Hello%20official%20audio")
   })
 })

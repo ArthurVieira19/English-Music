@@ -71,8 +71,12 @@ export function parseVideoTitle(videoTitle: string, channel = ""): VideoTitleGue
   return { title: unquote(stripNoise(main)), artist: artistFromChannel(channel) }
 }
 
-/** A YouTube search for the song, for when the admin knows the song but not the video. */
+/**
+ * A YouTube search for the song's official audio upload. That upload is the
+ * album recording, the one synced lyrics are timed against, so its timing
+ * lines up; music videos often add an intro or a scene and drift.
+ */
 export function youtubeSearchUrl(title: string, artist: string): string {
-  const query = [artist, title, "official video"].map((part) => part.trim()).filter(Boolean).join(" ")
+  const query = [artist, title, "official audio"].map((part) => part.trim()).filter(Boolean).join(" ")
   return `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`
 }
