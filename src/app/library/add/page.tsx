@@ -9,6 +9,7 @@ import { parseLRC } from "@/modules/lyrics/lrcParser";
 import { estimateSongDifficulty } from "@/modules/lyrics/estimateSongDifficulty";
 import { autoPick, rankLyricsMatches, DURATION_TOLERANCE_SECONDS } from "@/modules/lyrics/rankLyricsMatches";
 import { shiftLyrics } from "@/modules/lyrics/shiftLyrics";
+import { formatLRC } from "@/modules/lyrics/retimeLyrics";
 import { parseYoutubeId } from "@/modules/youtube/parseYoutubeId";
 import { parseVideoTitle, youtubeSearchUrl } from "@/modules/youtube/parseVideoTitle";
 import { getSyncedLyricsForLength, searchSyncedLyrics, type LrclibResult } from "@/services/lyrics/lrclibClient";
@@ -516,6 +517,12 @@ export default function AddSongPage() {
                 lines={parsedLyrics}
                 offset={syncOffset}
                 onOffsetChange={setSyncOffset}
+                onRetime={(retimed) => {
+                  // Retimed lines are already in the video's time, so they replace the lyrics and the offset goes.
+                  editedRef.current.lyrics = true;
+                  setLyricsInput(formatLRC(retimed));
+                  setSyncOffset(0);
+                }}
                 onDuration={setVideoDuration}
                 suggestedOffset={suggestedOffset}
               />

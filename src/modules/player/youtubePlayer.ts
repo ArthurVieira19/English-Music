@@ -96,6 +96,9 @@ export class YouTubePlayer implements MediaPlayer {
           // Our own synced captions replace YouTube's native ones.
           cc_load_policy: 0,
           iv_load_policy: 3,
+          // Tells the embed which page it talks to; without it YouTube logs
+          // postMessage origin warnings on every load.
+          origin: window.location.origin,
         },
         events: {
           onReady: () => {
