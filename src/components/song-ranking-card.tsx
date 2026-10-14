@@ -102,10 +102,10 @@ function RankingRow({ entry, separated }: { entry: SongScoreEntry; separated: bo
       )}
       <li
         aria-label={`${ordinal(entry.place)}: ${entry.displayName}${entry.isMe ? " (you)" : ""}, ${entry.score} points, ${Math.round(entry.accuracy)}% accuracy`}
-        className={cn("flex items-center gap-3 px-4 py-2.5", entry.isMe && "bg-primary/10")}
+        className={cn("flex items-center gap-3 px-4 py-2.5", entry.isMe && "bg-secondary/10")}
       >
         {entry.place === 1 ? (
-          <Crown aria-hidden className="mx-1.5 size-5 shrink-0 text-amber-400" />
+          <Crown aria-hidden className="mx-1.5 size-5 shrink-0 text-amber-500 dark:text-amber-400" />
         ) : (
           <span aria-hidden className="w-8 shrink-0 text-center font-display font-semibold tabular-nums text-muted-foreground">
             {entry.place}
@@ -113,7 +113,7 @@ function RankingRow({ entry, separated }: { entry: SongScoreEntry; separated: bo
         )}
         <p className="min-w-0 flex-1 truncate font-medium">
           {entry.displayName}
-          {entry.isMe && <span className="ml-1.5 text-xs font-normal text-primary">(you)</span>}
+          {entry.isMe && <span className="ml-1.5 text-xs font-normal text-secondary">(you)</span>}
         </p>
         <p className="hidden shrink-0 text-xs text-muted-foreground tabular-nums sm:block">{Math.round(entry.accuracy)}%</p>
         <p className="shrink-0 font-display text-lg font-semibold tabular-nums">{entry.score.toLocaleString("en-US")}</p>

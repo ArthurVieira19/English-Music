@@ -39,7 +39,7 @@ export default function LoginPage() {
       subtitle="Log in to pick up your streak and progress."
       footer={
         <>
-          New to SongGap?{" "}
+          New to English Cafe Club?{" "}
           <Link href="/signup" className="font-medium text-primary underline-offset-4 hover:underline">
             Create an account
           </Link>

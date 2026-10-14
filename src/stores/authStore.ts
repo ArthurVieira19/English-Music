@@ -1,4 +1,5 @@
 import { create } from "zustand"
+import type { AccountRole } from "@/modules/admin/accountRole"
 
 /**
  * - loading: session + data still being fetched (pages render a loader)
@@ -14,12 +15,20 @@ interface AuthState {
   userId: string | null
   email: string | null
   displayName: string | null
+  /** Full control: true for both admins and teachers. What the pages and the database policies check. */
   isAdmin: boolean
+  role: AccountRole
 }
 
 interface AuthActions {
   setLoading: () => void
-  setAuthenticated: (user: { userId: string; email: string; displayName: string; isAdmin: boolean }) => void
+  setAuthenticated: (user: {
+    userId: string
+    email: string
+    displayName: string
+    isAdmin: boolean
+    role: AccountRole
+  }) => void
   setUnauthenticated: () => void
   setError: () => void
 }
@@ -30,6 +39,7 @@ const SIGNED_OUT: AuthState = {
   email: null,
   displayName: null,
   isAdmin: false,
+  role: "user",
 }
 
 export const useAuthStore = create<AuthState & AuthActions>((set) => ({

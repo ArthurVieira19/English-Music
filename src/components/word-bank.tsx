@@ -85,7 +85,7 @@ export function WordBank({
               onClick={() => target && onPick(target.tokenIndex, word)}
               className={cn(
                 "relative min-h-12 truncate rounded-xl border border-border bg-accent/60 px-4 font-body text-base font-medium transition-colors duration-150",
-                "enabled:hover:border-primary/50 enabled:hover:bg-primary/15 enabled:hover:text-primary",
+                "enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary",
                 isRuledOut ? "text-destructive/60 line-through opacity-50" : "disabled:opacity-50",
               )}
             >

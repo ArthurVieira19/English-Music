@@ -1,4 +1,4 @@
-# Project: SongGap
+# Project: English Cafe Club (formerly SongGap)
 
 ## Vision
 
@@ -11,7 +11,7 @@ Accounts and storage (changed 2026-09-30 — this replaces the original "no acco
 - Login is required to play. Accounts use Supabase Auth (email + password, email confirmation off).
 - Each player's progress is saved to Supabase (`user_data`), so a leaderboard can be built on it later.
 - The song library is global (`songs` table): every player reads it, only admins (`profiles.is_admin`) can add, edit or remove songs. This is enforced by row level security, not just by hiding buttons.
-- There is still no custom backend API: the browser talks to Supabase directly.
+- The browser talks to Supabase directly, plus Supabase Edge Functions for anything that needs the `service_role` key (see "Admin: registering players").
 
 The application should feel like a mix of:
 
@@ -20,6 +20,8 @@ The application should feel like a mix of:
 - Modern SaaS product
 
 Clean animations, glassmorphism, smooth transitions and game-like feedback.
+
+Brand (2026-10-14): the site is **English Cafe Club**. The logo is `img/logo-english.jpg`; transparent cut-outs live in `src/assets/brand/` (rendered by `components/brand-logo.tsx`) and the app icons are `src/app/icon.png`, `apple-icon.png`, `favicon.ico`. Palette from the logo: navy ink, red for the one primary action (and wrong answers), blue for right answers/progress/highlights, white paper; light theme by default. Full system in DESIGN.md. Storage keys keep the old `songgap:` prefix on purpose (renaming them would wipe every cache).
 
 ---
 
@@ -56,7 +58,7 @@ Mandatory:
 
 - Supabase (`@supabase/supabase-js`, `@supabase/ssr`) for auth and Postgres
 
-No custom backend API: everything runs in the browser. The site is a static export (`output: "export"`) hosted on GitHub Pages (`.github/workflows/pages.yml`, base path `/lingoclip2.0` via `NEXT_PUBLIC_BASE_PATH`), so there is no middleware: `AuthGate` gates pages behind login on the client. The game route is `/game?id=<songId>` because song ids come from the database and cannot be pre-rendered.
+Server-side logic lives in Supabase Edge Functions (source in `supabase/functions/`, deployed to the Supabase project), never in a backend of our own. The site itself runs in the browser. The site is a static export (`output: "export"`) hosted on GitHub Pages (`.github/workflows/pages.yml`, base path `/lingoclip2.0` via `NEXT_PUBLIC_BASE_PATH`), so there is no middleware: `AuthGate` gates pages behind login on the client. The game route is `/game?id=<songId>` because song ids come from the database and cannot be pre-rendered.
 
 ---
 
@@ -142,12 +144,20 @@ Goal: improve how much English people actually retain, not just app polish. Brai
   - The player passes `origin` in playerVars, which silences YouTube's postMessage origin warning. The googleads/doubleclick CORS errors in the console come from YouTube's own ad tracking inside the iframe and can't be fixed from the app.
   - Finding videos *inside* the app would need a YouTube Data API key.
 
+- **Admin: registering players** (2026-10-14, `/admin/members`, header icon for admins only). The admin enters Name, Birth date, Email and Password; the player then logs in with that email + password like anyone else.
+  - Accounts are created by the **`create-member` Edge Function** (`supabase/functions/create-member/index.ts`, `verify_jwt` on). It resolves the caller from their token, requires `profiles.is_admin`, then calls `auth.admin.createUser` with the `service_role` key that Supabase injects server-side. This is why there is now server-side code: the key can never ship in the site, and `signUp` from the browser would log the admin out. If saving the private details fails, the new account is deleted again.
+  - Birth date and email go to **`member_private`** (admin-only read via RLS, no client writes), not `profiles`, because every signed-in player can read `profiles`. Migration `supabase/migrations/20261014120000_member_private.sql` (already run).
+  - Form rules live in `modules/admin/memberForm.ts` and mirror the function's checks; the browser side is `services/admin/memberService.ts`.
+  - **Account types** (2026-10-14): Admin, Teacher, Player (`modules/admin/accountRole.ts`, `profiles.role`). `profiles.is_admin` stays the permission flag that `is_admin()`, the songs RLS and the Edge Function check, and means "full control": true for admin *and* teacher (a DB check keeps `role` and `is_admin` in agreement). A teacher can therefore also register admins. Players can only play. The admin picks the type on the registration form; the function sets it after `createUser`. `authStore.role` only drives the badge in Settings. **Needs `supabase/migrations/20261014140000_account_roles.sql` run once**, then the updated `create-member` function deployed.
+  - The public `/signup` page still exists, so self-registration is still possible. Remove it (and turn off "Allow new users to sign up" in Supabase) if only admins should create accounts.
+  - Dashboard setting still off: Auth > Passwords > leaked password protection (plan dependent).
+
 ## Still open
 
 - **Lives / game over** is an untried gameplay change that needs a product decision (as an optional challenge mode at most).
 - **Sharing a challenge** with the same blanks (put the session seed in the link).
 - **XP can still be farmed by replaying one song** (XP = score, every playthrough). The per-song ranking isn't affected, but the weekly XP board is. Diminishing XP for repeat plays of the same song is the likely fix.
-- **Automatic sync calibration.** Not possible fully automatically: the YouTube iframe exposes no audio to analyse and there is no backend. Realistic next steps: store the median offset players chose per song and use it as the default for new players (needs a table + migration), or let an admin save a default `offset` on the song.
+- **Automatic sync calibration.** Not possible fully automatically: the YouTube iframe exposes no audio to analyse and there is no server that hears the audio. Realistic next steps: store the median offset players chose per song and use it as the default for new players (needs a table + migration), or let an admin save a default `offset` on the song.
 
 - **"Shadowing"/pronunciation practice** mode via the Web Speech API.
 - **Contextual notes for idioms/slang**, which a per-word dictionary lookup can't explain (contractions and spoken reductions are now covered by the mistake analyzer, but only when the player gets them wrong).

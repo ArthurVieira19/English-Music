@@ -39,6 +39,14 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  --color-brand-navy: var(--brand-navy);
+  --color-brand-blue: var(--brand-blue);
+  --color-brand-red: var(--brand-red);
+  --color-brand-sky: var(--brand-sky);
+  --color-tier-1: var(--tier-1);
+  --color-tier-2: var(--tier-2);
+  --color-tier-3: var(--tier-3);
+  --color-tier-4: var(--tier-4);
   --radius-sm: calc(var(--radius) * 0.55);
   --radius-md: calc(var(--radius) * 0.75);
   --radius-lg: var(--radius);
@@ -49,91 +57,117 @@
 }
 
 /*
- * "Marquee" theme: a midnight record-store palette — warm near-black felt
- * background, cream ink for type, and a two-bulb neon accent (coral +
- * acid lime) standing in for a lit-up club marquee. Dark by default.
+ * "Cafe Club" theme, taken from the English Cafe Club logo: navy ink
+ * ("CLUB"), a mid blue ("ENGLISH"), a red script ("Cafe") and white paper.
  *
- * `:root` holds the light variant (mirrored from `.dark` by flipping surface
- * and text lightness while keeping the same hues/chroma, so brand colors —
- * primary coral, secondary lime — read identically in both themes); `.dark`
- * is the original, unchanged palette.
+ *   - navy is the ink and the stage for brand moments (auth panel, heroes)
+ *   - red is the one spotlight: the primary action on each screen
+ *   - blue means "right": correct answers, streaks, progress
+ *   - difficulty runs like ski pistes: light blue, blue, red, black
+ *
+ * `:root` is the light theme (the default, white like the logo); `.dark`
+ * swaps the paper for deep navy and lifts red and blue so they still read.
+ * Interactive red/blue are a shade deeper than the logo inks so small text
+ * clears 4.5:1; the raw inks live in --brand-* for the logo-like moments.
  */
 :root {
-  --background: oklch(0.975 0.005 55);
-  --foreground: oklch(0.2 0.02 55);
-  --card: oklch(0.995 0.003 55);
-  --card-foreground: oklch(0.2 0.02 55);
-  --popover: oklch(0.995 0.003 55);
-  --popover-foreground: oklch(0.2 0.02 55);
-  --primary: oklch(0.72 0.19 40);
-  --primary-foreground: oklch(0.16 0.02 40);
-  /* Acid lime at dark-theme lightness is ~1.5:1 as text on near-white; this
-     darker lime keeps the hue but clears 4.5:1 both as text and behind white text. */
-  --secondary: oklch(0.56 0.17 130);
-  --secondary-foreground: oklch(0.99 0.01 122);
-  --muted: oklch(0.94 0.015 55);
-  --muted-foreground: oklch(0.44 0.02 70);
-  --accent: oklch(0.92 0.02 55);
-  --accent-foreground: oklch(0.2 0.02 55);
-  --destructive: oklch(0.55 0.21 20);
-  --border: oklch(0.2 0.02 55 / 10%);
-  --input: oklch(0.2 0.02 55 / 8%);
-  --ring: oklch(0.6 0.19 40 / 45%);
-  --chart-1: oklch(0.72 0.19 40);
-  --chart-2: oklch(0.6 0.18 122);
-  --chart-3: oklch(0.6 0.15 70);
-  --chart-4: oklch(0.55 0.12 20);
-  --chart-5: oklch(0.5 0.05 55);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.96 0.006 55);
-  --sidebar-foreground: oklch(0.2 0.02 55);
-  --sidebar-primary: oklch(0.72 0.19 40);
-  --sidebar-primary-foreground: oklch(0.16 0.02 40);
-  --sidebar-accent: oklch(0.92 0.02 55);
-  --sidebar-accent-foreground: oklch(0.2 0.02 55);
-  --sidebar-border: oklch(0.2 0.02 55 / 10%);
-  --sidebar-ring: oklch(0.6 0.19 40 / 45%);
+  --brand-navy: oklch(0.307 0.094 270);
+  --brand-blue: oklch(0.558 0.117 260);
+  --brand-red: oklch(0.57 0.216 25);
+  --brand-sky: oklch(0.93 0.03 255);
 
-  --glow-primary: oklch(0.72 0.19 40 / 35%);
-  --glow-secondary: oklch(0.87 0.22 122 / 30%);
+  --background: oklch(0.975 0.008 265);
+  --foreground: oklch(0.307 0.094 270);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.307 0.094 270);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.307 0.094 270);
+  --primary: oklch(0.545 0.21 25);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.51 0.12 260);
+  --secondary-foreground: oklch(1 0 0);
+  --muted: oklch(0.95 0.012 265);
+  --muted-foreground: oklch(0.47 0.05 268);
+  --accent: oklch(0.935 0.022 262);
+  --accent-foreground: oklch(0.307 0.094 270);
+  --destructive: oklch(0.53 0.2 24);
+  --border: oklch(0.307 0.094 270 / 12%);
+  --input: oklch(0.307 0.094 270 / 20%);
+  --ring: oklch(0.51 0.12 260 / 45%);
+  --focus: oklch(0.51 0.12 260);
+  --chart-1: oklch(0.545 0.21 25);
+  --chart-2: oklch(0.51 0.12 260);
+  --chart-3: oklch(0.307 0.094 270);
+  --chart-4: oklch(0.75 0.08 255);
+  --chart-5: oklch(0.6 0.03 265);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.96 0.012 265);
+  --sidebar-foreground: oklch(0.307 0.094 270);
+  --sidebar-primary: oklch(0.545 0.21 25);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.935 0.022 262);
+  --sidebar-accent-foreground: oklch(0.307 0.094 270);
+  --sidebar-border: oklch(0.307 0.094 270 / 12%);
+  --sidebar-ring: oklch(0.51 0.12 260 / 45%);
+
+  --tier-1: oklch(0.54 0.12 240);
+  --tier-2: oklch(0.43 0.15 266);
+  --tier-3: oklch(0.545 0.21 25);
+  --tier-4: oklch(0.2 0.02 270);
+
+  --glow-primary: oklch(0.57 0.216 25 / 30%);
+  --glow-secondary: oklch(0.558 0.117 260 / 30%);
+  --shadow-ink: oklch(0.307 0.094 270 / 14%);
 }
 
 .dark {
-  --background: oklch(0.16 0.014 55);
-  --foreground: oklch(0.97 0.02 85);
-  --card: oklch(0.21 0.018 55);
-  --card-foreground: oklch(0.97 0.02 85);
-  --popover: oklch(0.21 0.018 55);
-  --popover-foreground: oklch(0.97 0.02 85);
-  --primary: oklch(0.72 0.19 40);
-  --primary-foreground: oklch(0.16 0.02 40);
-  --secondary: oklch(0.87 0.22 122);
-  --secondary-foreground: oklch(0.16 0.03 122);
-  --muted: oklch(0.26 0.02 55);
-  --muted-foreground: oklch(0.72 0.03 70);
-  --accent: oklch(0.29 0.03 55);
-  --accent-foreground: oklch(0.97 0.02 85);
-  --destructive: oklch(0.62 0.21 20);
-  --border: oklch(0.97 0.02 85 / 10%);
-  --input: oklch(0.97 0.02 85 / 12%);
-  --ring: oklch(0.72 0.19 40 / 55%);
-  --chart-1: oklch(0.72 0.19 40);
-  --chart-2: oklch(0.87 0.22 122);
-  --chart-3: oklch(0.75 0.15 70);
-  --chart-4: oklch(0.65 0.12 20);
-  --chart-5: oklch(0.6 0.05 55);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.19 0.016 55);
-  --sidebar-foreground: oklch(0.97 0.02 85);
-  --sidebar-primary: oklch(0.72 0.19 40);
-  --sidebar-primary-foreground: oklch(0.16 0.02 40);
-  --sidebar-accent: oklch(0.26 0.02 55);
-  --sidebar-accent-foreground: oklch(0.97 0.02 85);
-  --sidebar-border: oklch(0.97 0.02 85 / 10%);
-  --sidebar-ring: oklch(0.72 0.19 40 / 55%);
+  --brand-navy: oklch(0.307 0.094 270);
+  --brand-blue: oklch(0.754 0.089 261);
+  --brand-red: oklch(0.644 0.204 22);
+  --brand-sky: oklch(0.3 0.07 262);
 
-  --glow-primary: oklch(0.72 0.19 40 / 35%);
-  --glow-secondary: oklch(0.87 0.22 122 / 30%);
+  --background: oklch(0.19 0.055 268);
+  --foreground: oklch(0.97 0.01 260);
+  --card: oklch(0.235 0.06 268);
+  --card-foreground: oklch(0.97 0.01 260);
+  --popover: oklch(0.235 0.06 268);
+  --popover-foreground: oklch(0.97 0.01 260);
+  --primary: oklch(0.64 0.2 23);
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.76 0.1 258);
+  --secondary-foreground: oklch(0.2 0.06 268);
+  --muted: oklch(0.26 0.055 268);
+  --muted-foreground: oklch(0.76 0.04 262);
+  --accent: oklch(0.3 0.065 266);
+  --accent-foreground: oklch(0.97 0.01 260);
+  --destructive: oklch(0.68 0.19 22);
+  --border: oklch(0.97 0.01 260 / 11%);
+  --input: oklch(0.97 0.01 260 / 10%);
+  --ring: oklch(0.76 0.1 258 / 55%);
+  --focus: oklch(0.76 0.1 258);
+  --chart-1: oklch(0.64 0.2 23);
+  --chart-2: oklch(0.76 0.1 258);
+  --chart-3: oklch(0.97 0.01 260);
+  --chart-4: oklch(0.55 0.09 262);
+  --chart-5: oklch(0.45 0.04 265);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.215 0.058 268);
+  --sidebar-foreground: oklch(0.97 0.01 260);
+  --sidebar-primary: oklch(0.64 0.2 23);
+  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-accent: oklch(0.3 0.065 266);
+  --sidebar-accent-foreground: oklch(0.97 0.01 260);
+  --sidebar-border: oklch(0.97 0.01 260 / 11%);
+  --sidebar-ring: oklch(0.76 0.1 258 / 55%);
+
+  --tier-1: oklch(0.82 0.09 235);
+  --tier-2: oklch(0.74 0.12 268);
+  --tier-3: oklch(0.68 0.19 22);
+  --tier-4: oklch(0.97 0.01 260);
+
+  --glow-primary: oklch(0.64 0.2 23 / 35%);
+  --glow-secondary: oklch(0.76 0.1 258 / 30%);
+  --shadow-ink: oklch(0.08 0.03 268 / 45%);
 }
 
 @layer base {
@@ -154,26 +188,46 @@
 
   /*
    * Keyboard focus has to be obvious on every custom control, not only the
-   * shadcn ones. Uses the solid primary color (--ring is only ~50% opaque,
-   * too faint to count as a focus indicator). `:where` keeps specificity at
-   * zero so any component's own focus styles still win.
+   * shadcn ones. Uses the solid --focus blue (--ring is only ~50% opaque,
+   * too faint to count as a focus indicator; red would read as an error).
+   * `:where` keeps specificity at zero so any component's own focus styles
+   * still win.
    */
   :where(button, [role="button"], a[href], summary, select, [tabindex="0"]):focus-visible {
-    outline: 2px solid var(--primary);
+    outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
 }
 
 @layer components {
-  /* Frosted "marquee glass" surface used for cards, HUDs, and panels. */
+  /* Frosted surface used for elevated cards, HUDs, and panels. */
   .glass {
-    background: color-mix(in oklch, var(--card) 70%, transparent);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    /* Via @apply: a raw `backdrop-filter` declaration here was being dropped
+       from the compiled CSS, so the glass never actually blurred. */
+    @apply backdrop-blur-[16px] backdrop-saturate-150;
     border: 1px solid var(--border);
     box-shadow:
-      0 1px 0 0 color-mix(in oklch, var(--foreground) 6%, transparent) inset,
-      0 2px 8px -2px oklch(0 0 0 / 35%);
+      0 1px 0 0 color-mix(in oklch, var(--card) 60%, transparent) inset,
+      0 2px 8px -2px var(--shadow-ink);
+  }
+
+  /*
+   * Navy "stage": the brand's committed surface (auth brand panel, home hero,
+   * results). Same navy in both themes so the logo's dark variant always
+   * sits on it; a faint blue/red light keeps it from reading flat.
+   */
+  .navy-stage {
+    --stage-ink: oklch(0.97 0.01 260);
+    --stage-muted: oklch(0.82 0.04 262);
+    --stage-red: oklch(0.7 0.18 22);
+    --stage-blue: oklch(0.8 0.09 255);
+    --stage-line: oklch(0.97 0.01 260 / 14%);
+    color: var(--stage-ink);
+    background:
+      radial-gradient(120% 90% at 100% 0%, oklch(0.558 0.117 260 / 32%), transparent 60%),
+      radial-gradient(90% 70% at 0% 100%, oklch(0.57 0.216 25 / 18%), transparent 65%),
+      oklch(0.255 0.08 270);
   }
 
   /*
@@ -218,6 +272,16 @@
   }
 }
 
+@keyframes eq {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
 :root {
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
@@ -236,15 +300,4 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
-}
-
-/* Subtle animated film-grain layer for atmosphere over the flat background. */
-.grain-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }

@@ -89,7 +89,8 @@ function ReviewLanding({
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: EASE_OUT }}
-        className="glass mt-6 grid gap-6 rounded-2xl p-5 sm:p-6 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:items-center"
+        // Navy brand panel in both themes; `dark` gives everything inside the dark-theme tokens.
+        className="navy-stage dark mt-6 grid gap-6 rounded-2xl p-5 sm:p-7 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:items-center"
       >
         <div>
           {dueCount > 0 ? (
@@ -149,7 +150,7 @@ function CardPreview({ word }: { word: WeakWord | undefined }) {
     return (
       <div aria-hidden className="rounded-xl border border-dashed border-border px-5 py-6 text-center">
         <p className="font-display text-lg text-muted-foreground">
-          I keep your <span className="mx-1 inline-block w-16 border-b-2 border-primary/60 align-baseline" /> but I
+          I keep your <span className="mx-1 inline-block w-16 border-b-2 border-secondary/70 align-baseline" /> but I
           never call
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
@@ -167,7 +168,7 @@ function CardPreview({ word }: { word: WeakWord | undefined }) {
           <span key={i}>
             {i > 0 && " "}
             {blankIndices.has(i) ? (
-              <span className="inline-block w-16 border-b-2 border-primary align-baseline">
+              <span className="inline-block w-16 border-b-2 border-secondary align-baseline">
                 <span className="sr-only">blank</span>
               </span>
             ) : (

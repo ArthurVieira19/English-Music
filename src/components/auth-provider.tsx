@@ -7,6 +7,7 @@ import { getSupabase, isSupabaseConfigured } from "@/services/supabase/client"
 import { flushRemoteSync, syncOnSignIn } from "@/services/supabase/userDataSync"
 import { songRepository } from "@/services/songs/songRepository"
 import { storageService } from "@/services/storage/storageService"
+import { isAccountRole, type AccountRole } from "@/modules/admin/accountRole"
 import { useAuthStore } from "@/stores/authStore"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { useStatsStore } from "@/stores/statsStore"
@@ -28,6 +29,20 @@ async function migrateLegacySongs(adminId: string) {
   } catch (error) {
     // Left in place so the next login tries again.
     console.warn("Could not migrate local songs to the global library.", error)
+  }
+}
+
+/**
+ * Which kind of account this is (shown as a badge only; permissions come from is_admin).
+ * Read on its own so a database without the `role` column yet can't block logging in.
+ */
+async function loadRole(userId: string, isAdmin: boolean): Promise<AccountRole> {
+  const fallback: AccountRole = isAdmin ? "admin" : "user"
+  try {
+    const { data } = await getSupabase().from("profiles").select("role").eq("id", userId).maybeSingle<{ role: string }>()
+    return isAccountRole(data?.role) ? data.role : fallback
+  } catch {
+    return fallback
   }
 }
 
@@ -54,6 +69,7 @@ async function bootstrap(user: User) {
     useReviewStore.getState().loadFromStorage()
 
     const isAdmin = profile?.is_admin === true
+    const role = await loadRole(user.id, isAdmin)
     if (isAdmin) await migrateLegacySongs(user.id)
     await useLibraryStore.getState().load()
 
@@ -63,6 +79,7 @@ async function bootstrap(user: User) {
       email,
       displayName: profile?.display_name ?? email.split("@")[0],
       isAdmin,
+      role,
     })
   } catch (error) {
     console.warn("Could not finish signing in.", error)

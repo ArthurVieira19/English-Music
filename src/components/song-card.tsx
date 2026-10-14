@@ -23,14 +23,14 @@ const DIFFICULTY_LEVELS = ["beginner", "intermediate", "advanced", "expert"] as 
 
 /**
  * Text color per difficulty, shared by the meter and anywhere a difficulty is
- * named. The light theme gets deeper shades: coral and orange at their
- * dark-theme lightness fall under 4.5:1 as small text on white.
+ * named. Runs like ski pistes (light blue, blue, red, black) using the
+ * --tier-* tokens, which clear 4.5:1 as small text in both themes.
  */
 export const DIFFICULTY_TEXT: Record<string, string> = {
-  beginner: "text-secondary",
-  intermediate: "text-[oklch(0.55_0.17_40)] dark:text-primary",
-  advanced: "text-[oklch(0.52_0.15_60)] dark:text-orange-400",
-  expert: "text-destructive",
+  beginner: "text-tier-1",
+  intermediate: "text-tier-2",
+  advanced: "text-tier-3",
+  expert: "text-tier-4",
 };
 
 export function songHref(song: Pick<Song, "id">): string {
@@ -121,7 +121,7 @@ export function SongThumbnail({
 /**
  * Art-first tile: the thumbnail carries the card, title and artist sit
  * underneath on the page itself (no box around them), and the play button
- * rises into the art's corner on hover — the one coral thing in the grid.
+ * rises into the art's corner on hover — the one red thing in the grid.
  */
 export function SongCard({
   song,

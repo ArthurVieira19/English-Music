@@ -34,7 +34,7 @@ const GAME_MODE_OPTIONS: GameModeOption[] = [
     label: "Word bank",
     description: "Every option is a word the song is about to ask for. Listen for which one comes now.",
     icon: <LayoutGrid className="size-5" />,
-    tone: "text-orange-400",
+    tone: "text-tier-2",
   },
 ]
 

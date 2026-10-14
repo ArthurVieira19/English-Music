@@ -120,7 +120,7 @@ export default function LibraryPage() {
       </div>
 
       {/* Sticks under the site header so filters stay in reach while scrolling a long catalog. */}
-      <div className="sticky top-14 z-20 -mx-4 mb-6 bg-background/85 px-4 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
+      <div className="sticky top-16 z-20 -mx-4 mb-6 bg-background/85 px-4 py-3 backdrop-blur-md supports-[backdrop-filter]:bg-background/70">
         <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
           {/* Phones: search and sort share a row. lg: "contents" dissolves the row into the toolbar's single line. */}
           <div className="flex gap-2 lg:contents">
@@ -324,7 +324,7 @@ function EmptyLibraryOnboarding({ isAdmin }: { isAdmin: boolean }) {
       {isAdmin ? (
         <>
           <p className="mt-2 text-muted-foreground text-pretty">
-            SongGap doesn&apos;t ship with songs built in — pick any track on YouTube, paste the link, and
+            English Cafe Club doesn&apos;t ship with songs built in — pick any track on YouTube, paste the link, and
             we&apos;ll try to find synced lyrics for it automatically. Songs you add are shared with every
             player.
           </p>

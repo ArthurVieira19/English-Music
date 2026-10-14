@@ -170,7 +170,7 @@ function LevelPanel({ xp, level }: { xp: number; level: number }) {
             fill="none"
             strokeWidth="9"
             strokeLinecap="round"
-            className="stroke-primary"
+            className="stroke-secondary"
             strokeDasharray={circumference}
             initial={{ strokeDashoffset: circumference }}
             animate={{ strokeDashoffset: circumference * (1 - fraction) }}

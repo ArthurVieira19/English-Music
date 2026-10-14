@@ -90,8 +90,8 @@ describe("SongRankingCard", () => {
     renderCard(saved())
 
     const mine = await screen.findByLabelText(/2nd: Me \(you\)/)
-    expect(mine).toHaveClass("bg-primary/10")
-    expect(screen.getByLabelText(/1st: Ana/)).not.toHaveClass("bg-primary/10")
+    expect(mine).toHaveClass("bg-secondary/10")
+    expect(screen.getByLabelText(/1st: Ana/)).not.toHaveClass("bg-secondary/10")
   })
 
   it("separates the player's own row when it is below the shown board", async () => {

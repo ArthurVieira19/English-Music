@@ -8,6 +8,7 @@ import { useSettingsStore } from "@/stores/settingsStore";
 import { useStatsStore } from "@/stores/statsStore";
 import { useAchievementStore } from "@/stores/achievementStore";
 import { useReviewStore } from "@/stores/reviewStore";
+import { roleLabel } from "@/modules/admin/accountRole";
 import { authService } from "@/services/auth/authService";
 import { leaderboardService } from "@/services/leaderboard/leaderboardService";
 import { resetProgress } from "@/services/supabase/userDataSync";
@@ -40,6 +41,7 @@ export default function SettingsPage() {
   const displayName = useAuthStore((s) => s.displayName);
   const email = useAuthStore((s) => s.email);
   const isAdmin = useAuthStore((s) => s.isAdmin);
+  const role = useAuthStore((s) => s.role);
   const userId = useAuthStore((s) => s.userId);
   const [resetStatus, setResetStatus] = useState<"idle" | "done" | "failed">("idle");
   const [signingOut, setSigningOut] = useState(false);
@@ -101,7 +103,7 @@ export default function SettingsPage() {
               {isAdmin && (
                 <Badge variant="secondary" className="gap-1">
                   <ShieldCheck aria-hidden className="size-3" />
-                  Admin
+                  {roleLabel(role)}
                 </Badge>
               )}
             </p>

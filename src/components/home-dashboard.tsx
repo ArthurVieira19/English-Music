@@ -118,8 +118,13 @@ function DailyPickHero({ song }: { song: Song }) {
         className="group relative flex aspect-[4/3] min-w-0 flex-col justify-end overflow-hidden rounded-2xl ring-1 ring-foreground/[0.08] sm:aspect-[16/8] lg:aspect-auto lg:h-full lg:min-h-80"
       >
         <SongThumbnail song={song} highRes className="absolute inset-0 aspect-auto size-full" />
-        <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/5" />
-        <div className="relative flex items-end justify-between gap-4 p-5 sm:p-7">
+        <div
+          aria-hidden
+          className="absolute inset-0 bg-gradient-to-t from-[oklch(0.2_0.075_270/0.94)] via-[oklch(0.22_0.075_270/0.45)] to-transparent"
+        />
+        {/* `dark` scopes the dark-theme tokens to the text over the photo, so the
+            difficulty color and the red play button read on navy in both themes. */}
+        <div className="dark relative flex items-end justify-between gap-4 p-5 sm:p-7">
           <div className="min-w-0 text-white">
             <p className="flex items-center gap-1.5 text-sm font-medium text-white/80">
               <Sparkles aria-hidden className="size-4 text-primary" />
@@ -129,11 +134,11 @@ function DailyPickHero({ song }: { song: Song }) {
               {song.title}
             </h2>
             <p className="mt-1 truncate text-white/75">{song.artist}</p>
-            <DifficultyMeter difficulty={song.difficulty} className="mt-3 rounded-full bg-black/50 px-2.5 py-1 backdrop-blur-sm" />
+            <DifficultyMeter difficulty={song.difficulty} className="mt-3 rounded-full bg-[oklch(0.2_0.075_270/0.6)] px-2.5 py-1 backdrop-blur-sm" />
           </div>
           <span
             aria-hidden
-            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_8px_-2px_oklch(0_0_0/50%)] transition-transform duration-200 ease-[var(--ease-out-quint)] group-hover:scale-105 group-active:scale-95 sm:size-16"
+            className="flex size-14 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-[0_4px_8px_-2px_oklch(0.1_0.05_270/60%)] transition-transform duration-200 ease-[var(--ease-out-quint)] group-hover:scale-105 group-active:scale-95 sm:size-16"
           >
             <Play className="ml-1 size-6" fill="currentColor" />
           </span>
@@ -261,7 +266,7 @@ function ProgressPanel({
           className="mt-2 h-2 overflow-hidden rounded-full bg-muted"
         >
           <motion.div
-            className="h-full origin-left rounded-full bg-primary"
+            className="h-full origin-left rounded-full bg-secondary"
             initial={{ scaleX: 0 }}
             animate={{ scaleX: xpIntoLevel / XP_PER_LEVEL }}
             transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1], delay: 0.2 }}
@@ -273,7 +278,7 @@ function ProgressPanel({
         href="/review"
         className={cn(
           "group mt-4 flex min-h-11 items-center justify-between gap-2 rounded-lg px-3 text-sm font-medium transition-colors duration-200 lg:mt-auto",
-          dueCount > 0 ? "bg-primary/12 text-primary hover:bg-primary/18" : "text-muted-foreground hover:bg-foreground/[0.04]",
+          dueCount > 0 ? "bg-foreground text-background hover:bg-foreground/90" : "text-muted-foreground hover:bg-foreground/[0.04]",
         )}
       >
         <span className="flex items-center gap-2">

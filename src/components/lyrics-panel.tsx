@@ -98,7 +98,7 @@ export function LyricsPanel({
                   <motion.div
                     layoutId="lyrics-active-line"
                     aria-hidden
-                    className="absolute inset-0 rounded-xl bg-primary/10 ring-1 ring-primary/20"
+                    className="absolute inset-0 rounded-xl bg-accent ring-1 ring-secondary/25"
                     transition={{ type: "spring", stiffness: 380, damping: 36 }}
                   />
                   <div className="relative">

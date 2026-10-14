@@ -2,10 +2,11 @@
 
 import { useEffect, type ReactNode } from "react"
 import { usePathname, useRouter } from "next/navigation"
-import { Loader2, WifiOff } from "lucide-react"
+import { WifiOff } from "lucide-react"
 import { isPublicPath } from "@/lib/authPaths"
 import { useAuthStore } from "@/stores/authStore"
 import { Button } from "@/components/ui/button"
+import { BrandLogo } from "@/components/brand-logo"
 
 /**
  * The middleware already bounces visitors without a session; this covers the
@@ -42,7 +43,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
   return (
     <div role="status" aria-label="Loading" className="flex flex-1 items-center justify-center py-24">
-      <Loader2 aria-hidden className="size-6 animate-spin text-muted-foreground" />
+      <BrandLogo className="h-20 opacity-90 motion-safe:animate-pulse" />
     </div>
   )
 }

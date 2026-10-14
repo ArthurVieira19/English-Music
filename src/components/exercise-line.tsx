@@ -172,7 +172,7 @@ function ExerciseTokenView({
     return (
       <span
         aria-label={token.answer ? `Missing word, ${token.answer.length} letters` : "Missing word"}
-        className={cn("tracking-widest", caption ? "text-white/50" : "text-primary/40")}
+        className={cn("tracking-widest", caption ? "text-white/50" : "text-secondary/60")}
       >
         {"•".repeat(blankWidth)}
       </span>
@@ -185,7 +185,7 @@ function ExerciseTokenView({
       return (
         <span
           aria-label={token.answer ? `Missing word, ${token.answer.length} letters` : "Missing word"}
-          className={cn("tracking-widest", caption ? "text-white/50" : "text-primary/40")}
+          className={cn("tracking-widest", caption ? "text-white/50" : "text-secondary/60")}
         >
           {"•".repeat(blankWidth)}
         </span>
@@ -206,7 +206,7 @@ function ExerciseTokenView({
             whileTap={{ scale: 0.96 }}
             disabled={wrongGuesses.includes(choice)}
             onClick={() => onSubmit(choice)}
-            className="rounded-full border border-border bg-accent/60 px-4 py-1.5 font-body text-sm font-medium transition-colors enabled:hover:border-primary/50 enabled:hover:bg-primary/15 enabled:hover:text-primary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
+            className="rounded-full border border-border bg-accent/60 px-4 py-1.5 font-body text-sm font-medium transition-colors enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
           >
             {choice}
           </motion.button>
@@ -226,10 +226,10 @@ function ExerciseTokenView({
       style={{ width }}
       className={cn(
         // scroll-mb: when a tap focuses the blank, the browser scrolls it clear of the fixed transport bar instead of leaving it underneath.
-        "inline-block scroll-mb-40 rounded-md border-0 border-b-2 border-dashed bg-transparent px-1 pb-0.5 text-center font-display font-semibold text-primary outline-none placeholder:text-primary/30 focus:border-solid",
+        "inline-block scroll-mb-40 rounded-md border-0 border-b-2 border-dashed bg-transparent px-1 pb-0.5 text-center font-display font-semibold text-foreground outline-none placeholder:text-secondary/40 focus:border-solid",
         isLastTry
           ? "border-destructive/70 focus:border-destructive"
-          : "border-primary/50 focus:border-primary",
+          : "border-secondary/60 focus:border-secondary",
       )}
       value={value}
       aria-label={isLastTry ? `${baseLabel} — last try` : baseLabel}
@@ -323,7 +323,7 @@ export function ExerciseChoicesView({
           whileTap={{ scale: 0.96 }}
           disabled={ruledOut.includes(choice)}
           onClick={() => onSubmit(nextChoiceToken.index, choice)}
-          className="min-h-12 truncate rounded-xl border border-border bg-accent/60 px-4 font-body text-base font-medium transition-colors duration-150 enabled:hover:border-primary/50 enabled:hover:bg-primary/15 enabled:hover:text-primary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
+          className="min-h-12 truncate rounded-xl border border-border bg-accent/60 px-4 font-body text-base font-medium transition-colors duration-150 enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
         >
           {choice}
         </motion.button>

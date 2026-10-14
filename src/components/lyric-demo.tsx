@@ -18,10 +18,12 @@ type Phase = "typing" | "correct"
 
 /**
  * The whole game in one line: a blank fills itself in letter by letter, turns
- * lime and pays out points, then the next line comes in. With reduced motion
- * it shows a finished line and stays put.
+ * blue and pays out points, then the next line comes in. With reduced motion
+ * it shows a finished line and stays put. `onNavy` uses the .navy-stage inks.
  */
-export function LyricDemo({ className }: { className?: string }) {
+export function LyricDemo({ className, onNavy = false }: { className?: string; onNavy?: boolean }) {
+  const red = onNavy ? "text-(--stage-red)" : "text-primary"
+  const blue = onNavy ? "text-(--stage-blue)" : "text-secondary"
   const reduceMotion = useReducedMotion()
   const [lineIndex, setLineIndex] = useState(0)
   const [typed, setTyped] = useState(0)
@@ -66,11 +68,11 @@ export function LyricDemo({ className }: { className?: string }) {
             <span
               className={cn(
                 "inline-block min-w-[5ch] border-b-2 px-1 text-center transition-colors duration-200",
-                isCorrect ? "border-secondary text-secondary" : "border-dashed border-primary text-primary",
+                isCorrect ? cn("border-current", blue) : cn("border-dashed border-current", red),
               )}
             >
               {shown}
-              {!isCorrect && <span className="ml-px inline-block h-[0.9em] w-[2px] translate-y-[0.1em] animate-pulse bg-primary" />}
+              {!isCorrect && <span className="ml-px inline-block h-[0.9em] w-[2px] translate-y-[0.1em] animate-pulse bg-current" />}
               {!shown && !isCorrect && <span className="opacity-0">{line.word}</span>}
             </span>
             <AnimatePresence>
@@ -79,7 +81,7 @@ export function LyricDemo({ className }: { className?: string }) {
                   initial={{ opacity: 0, y: 0 }}
                   animate={{ opacity: [0, 1, 1, 0], y: [0, -14, -22, -30] }}
                   transition={{ duration: 1.2, times: [0, 0.15, 0.7, 1] }}
-                  className="absolute -top-4 right-0 font-display text-base font-bold text-secondary"
+                  className={cn("absolute -top-4 right-0 font-display text-base font-bold", blue)}
                 >
                   +150
                 </motion.span>

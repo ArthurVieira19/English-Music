@@ -8,14 +8,27 @@ import { scheduleRemoteSync } from "@/services/supabase/userDataSync"
 import { readJSON, removeKey, writeJSON } from "./localStorageClient"
 import { LEGACY_CUSTOM_SONGS_KEY, STORAGE_KEYS } from "./storageKeys"
 
+const THEME_REVISION = 2
+
 export const DEFAULT_SETTINGS: Settings = {
   volume: 0.8,
   defaultDifficulty: "beginner",
   defaultGameMode: "typing",
   fuzzyMatching: true,
-  // Dark is the brand ("Marquee" theme, see DESIGN.md) — following the OS
-  // by default would flip most light-OS visitors out of the identity.
-  theme: "dark",
+  // Light is the brand (white like the English Cafe Club logo, see DESIGN.md);
+  // following the OS by default would flip dark-OS visitors out of it.
+  theme: "light",
+  themeRevision: THEME_REVISION,
+}
+
+/**
+ * Settings saved before the rebrand carry `theme: "dark"` only because dark
+ * was the old default, so they move to light once. The revision is kept from
+ * then on, so a player who picks Dark again keeps it.
+ */
+export function migrateTheme(settings: Settings): Settings {
+  if ((settings.themeRevision ?? 0) >= THEME_REVISION) return settings
+  return { ...settings, theme: settings.theme === "dark" ? "light" : settings.theme, themeRevision: THEME_REVISION }
 }
 
 export const DEFAULT_STATISTICS: Statistics = {
@@ -49,7 +62,7 @@ export const DEFAULT_PROGRESS: UserProgress = {
  */
 export const storageService = {
   getSettings(): Settings {
-    return readJSON(STORAGE_KEYS.settings, DEFAULT_SETTINGS)
+    return migrateTheme(readJSON(STORAGE_KEYS.settings, DEFAULT_SETTINGS))
   },
   saveSettings(settings: Settings): void {
     writeJSON(STORAGE_KEYS.settings, settings)

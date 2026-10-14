@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Bricolage_Grotesque, Instrument_Sans } from "next/font/google";
+import { Instrument_Sans, Montserrat } from "next/font/google";
 import { ThemeProvider } from "next-themes";
 import { MotionConfig } from "framer-motion";
 import { AuthGate } from "@/components/auth-gate";
@@ -11,7 +11,8 @@ import { OfflineBanner } from "@/components/offline-banner";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const displayFont = Bricolage_Grotesque({
+// Montserrat is the geometric sans of the logo's "ENGLISH" and "CLUB".
+const displayFont = Montserrat({
   variable: "--font-display",
   subsets: ["latin"],
 });
@@ -22,8 +23,9 @@ const bodyFont = Instrument_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "SongGap",
-  description: "Learn English through listening comprehension with music.",
+  title: { default: "English Cafe Club", template: "%s · English Cafe Club" },
+  description: "Learn English by ear: fill in the missing lyrics while the music video plays.",
+  applicationName: "English Cafe Club",
 };
 
 export const viewport: Viewport = {
@@ -33,8 +35,8 @@ export const viewport: Viewport = {
   // themselves back with env(safe-area-inset-bottom).
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: dark)", color: "#16110d" },
-    { media: "(prefers-color-scheme: light)", color: "#f8f6f4" },
+    { media: "(prefers-color-scheme: dark)", color: "#0e1633" },
+    { media: "(prefers-color-scheme: light)", color: "#f5f7fc" },
   ],
 };
 
@@ -54,11 +56,10 @@ export default function RootLayout({
         >
           Skip to content
         </a>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+        <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
           {/* Covers framer-motion only; CSS transitions have their own
               prefers-reduced-motion block in globals.css. */}
           <MotionConfig reducedMotion="user">
-            <div aria-hidden className="grain-overlay" />
             <AuthProvider />
             <ThemeSync />
             <OfflineBanner />

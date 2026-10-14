@@ -11,9 +11,9 @@ import {
   House,
   LibraryBig,
   LogOut,
-  Music2,
   Settings,
   Trophy,
+  UserPlus,
   type LucideIcon,
 } from "lucide-react";
 import { useReviewStore } from "@/stores/reviewStore";
@@ -22,6 +22,7 @@ import { useAuthStore } from "@/stores/authStore";
 import { authService } from "@/services/auth/authService";
 import { isPublicPath } from "@/lib/authPaths";
 import { cn } from "@/lib/utils";
+import { BrandLogo } from "@/components/brand-logo";
 
 const NAV_LINKS: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/", label: "Home", icon: House },
@@ -88,23 +89,20 @@ export function SiteHeader() {
   const pathname = usePathname();
   const dueCount = useDueCount();
   const isAuthPage = isPublicPath(pathname);
+  const isAdmin = useAuthStore((s) => s.isAdmin);
 
   // The login/sign-up screens carry their own logo and have nowhere to navigate to.
   if (isAuthPage) return null;
 
   return (
     <header className="glass sticky top-0 z-40 border-x-0 border-t-0">
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4">
-        <Link href="/" className="group flex items-center gap-2 rounded-lg">
-          <span
-            aria-hidden
-            className="flex size-8 items-center justify-center rounded-lg bg-primary/15 text-primary transition-[background-color,transform] duration-200 group-hover:rotate-[-8deg] group-hover:bg-primary/25"
-          >
-            <Music2 className="size-4" strokeWidth={2.5} />
-          </span>
-          <span className="font-display text-lg font-semibold tracking-tight">
-            Song<span className="text-primary">Gap</span>
-          </span>
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-3 px-4">
+        <Link
+          href="/"
+          aria-label="English Cafe Club, home"
+          className="flex items-center rounded-lg transition-transform duration-200 ease-[var(--ease-out-quint)] hover:-rotate-2 active:scale-95"
+        >
+          <BrandLogo priority className="h-11 md:h-12" />
         </Link>
 
         <div className="flex items-center gap-1">
@@ -149,6 +147,20 @@ export function SiteHeader() {
           >
             <CircleQuestionMark aria-hidden className="size-[1.125rem]" />
           </Link>
+          {isAdmin && (
+            <Link
+              href="/admin/members"
+              aria-label="Register players"
+              title="Register players"
+              aria-current={pathname === "/admin/members" ? "page" : undefined}
+              className={cn(
+                "flex size-10 items-center justify-center rounded-full transition-colors duration-200 hover:bg-accent hover:text-foreground md:size-9",
+                pathname === "/admin/members" ? "bg-accent text-foreground" : "text-muted-foreground",
+              )}
+            >
+              <UserPlus aria-hidden className="size-[1.125rem]" />
+            </Link>
+          )}
           <Link
             href="/settings"
             aria-label="Settings"
@@ -205,14 +217,14 @@ export function MobileTabBar() {
                 aria-current={isActive ? "page" : undefined}
                 className={cn(
                   "relative flex min-h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[0.7rem] font-medium transition-colors duration-200",
-                  isActive ? "text-primary" : "text-muted-foreground active:text-foreground",
+                  isActive ? "text-secondary" : "text-muted-foreground active:text-foreground",
                 )}
               >
                 {isActive && (
                   <motion.span
                     layoutId="tab-active-pill"
                     aria-hidden
-                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-primary"
+                    className="absolute inset-x-3 top-0 h-0.5 rounded-full bg-secondary"
                     transition={{ type: "spring", stiffness: 500, damping: 40 }}
                   />
                 )}

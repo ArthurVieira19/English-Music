@@ -436,7 +436,7 @@ export default function AddSongPage() {
                           <span className="text-xs text-muted-foreground">
                             {result.albumName || "Unknown album"} · {formatDuration(result.duration)}
                             {durationDelta !== null && (
-                              <span className={cn(timingMatches ? "text-secondary" : "text-orange-400")}>
+                              <span className={cn(timingMatches ? "text-secondary" : "text-amber-700 dark:text-amber-400")}>
                                 {" "}· {describeDurationDelta(durationDelta)}
                               </span>
                             )}
@@ -462,9 +462,9 @@ export default function AddSongPage() {
               )}
 
               {noVersionFitsVideo && (
-                <div role="status" className="flex flex-col gap-1 rounded-md border border-orange-400/40 bg-orange-400/10 p-2.5 text-sm">
+                <div role="status" className="flex flex-col gap-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-2.5 text-sm">
                   <p className="flex items-start gap-1.5">
-                    <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-orange-400" />
+                    <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
                     <span>
                       None of these versions is as long as this video ({formatDuration(videoDuration ?? 0)}), so their
                       timing won&apos;t line up on its own. Music videos often add an intro or a scene.
@@ -571,7 +571,7 @@ function VideoPreview({ video, isDuplicate }: { video: VideoState; isDuplicate: 
         )}
         {video.status === "failed" && (
           <p className="flex items-start gap-1.5 text-muted-foreground">
-            <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-orange-400" />
+            <AlertTriangle aria-hidden className="mt-0.5 size-3.5 shrink-0 text-amber-600 dark:text-amber-400" />
             {VIDEO_FAILURE_TEXT[video.reason]}
           </p>
         )}

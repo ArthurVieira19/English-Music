@@ -8,6 +8,12 @@ export interface Settings {
   fuzzyMatching: boolean
   theme: "dark" | "light" | "system"
   /**
+   * Which brand default the theme choice was made under. Absent on settings
+   * saved before the English Cafe Club rebrand, when dark was the default
+   * (see storageService.getSettings).
+   */
+  themeRevision?: number
+  /**
    * Per-song lyric sync correction in seconds, keyed by song id (see
    * modules/game/syncOffset.ts). Absent for songs that were never adjusted,
    * and optional so settings saved before this existed still load.

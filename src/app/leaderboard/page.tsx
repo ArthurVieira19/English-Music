@@ -155,9 +155,9 @@ export default function LeaderboardPage() {
 /** Visual column per rank: 1st in the middle, 2nd on the left, 3rd on the right. DOM stays in rank order for screen readers. */
 const PODIUM_COLUMN = [1, 0, 2] as const;
 const PODIUM_STYLE = [
-  { height: "h-28 sm:h-32", tone: "text-amber-300", ring: "ring-amber-300/70" },
-  { height: "h-20 sm:h-24", tone: "text-slate-300", ring: "ring-slate-300/60" },
-  { height: "h-14 sm:h-16", tone: "text-orange-400", ring: "ring-orange-400/60" },
+  { height: "h-28 sm:h-32", tone: "text-amber-500 dark:text-amber-300", ring: "ring-amber-400/80 dark:ring-amber-300/70" },
+  { height: "h-20 sm:h-24", tone: "text-slate-400 dark:text-slate-300", ring: "ring-slate-300 dark:ring-slate-300/60" },
+  { height: "h-14 sm:h-16", tone: "text-orange-600 dark:text-orange-400", ring: "ring-orange-400/70 dark:ring-orange-400/60" },
 ];
 
 function initials(name: string): string {
@@ -188,20 +188,20 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
               transition={{ duration: 0.3, ease: EASE_OUT, delay: 0.25 + (2 - index) * 0.06 }}
               className="flex w-full min-w-0 flex-col items-center"
             >
-              {index === 0 && <Crown aria-hidden className="mb-1 size-5 text-amber-300" />}
+              {index === 0 && <Crown aria-hidden className="mb-1 size-5 text-amber-500 dark:text-amber-300" />}
               <span
                 aria-hidden
                 className={cn(
                   "flex items-center justify-center rounded-full bg-accent font-display font-semibold ring-2",
                   index === 0 ? "size-16 text-xl" : "size-12 text-base",
-                  entry.isMe ? "ring-primary" : style.ring,
+                  entry.isMe ? "ring-secondary" : style.ring,
                 )}
               >
                 {initials(entry.displayName)}
               </span>
               <p className="mt-2 w-full truncate px-1 text-sm font-semibold">
                 {entry.displayName}
-                {entry.isMe && <span className="ml-1 font-normal text-primary">(you)</span>}
+                {entry.isMe && <span className="ml-1 font-normal text-secondary">(you)</span>}
               </p>
               <p className="text-sm text-muted-foreground tabular-nums">
                 {entry.score.toLocaleString("en-US")} XP
@@ -216,7 +216,7 @@ function Podium({ entries }: { entries: LeaderboardEntry[] }) {
                 "glass mt-3 flex w-full origin-bottom items-start justify-center rounded-t-xl rounded-b-none border-b-0 pt-2 font-display text-2xl font-semibold",
                 style.height,
                 style.tone,
-                entry.isMe && "bg-primary/15",
+                entry.isMe && "bg-secondary/15",
               )}
             >
               {entry.place}
@@ -238,13 +238,13 @@ function LeaderboardRow({ entry, separated }: { entry: LeaderboardEntry; separat
       )}
       <li
         aria-label={`${ordinal(entry.place)}: ${entry.displayName}${entry.isMe ? " (you)" : ""}, level ${entry.level}, ${entry.score} XP`}
-        className={cn("flex items-center gap-3 px-3 py-3 sm:px-4", entry.isMe && "bg-primary/10")}
+        className={cn("flex items-center gap-3 px-3 py-3 sm:px-4", entry.isMe && "bg-secondary/10")}
       >
         <PlaceBadge place={entry.place} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium">
             {entry.displayName}
-            {entry.isMe && <span className="ml-1.5 text-xs font-normal text-primary">(you)</span>}
+            {entry.isMe && <span className="ml-1.5 text-xs font-normal text-secondary">(you)</span>}
           </p>
           <p className="text-xs text-muted-foreground">Level {entry.level}</p>
         </div>
@@ -258,7 +258,7 @@ function LeaderboardRow({ entry, separated }: { entry: LeaderboardEntry; separat
 }
 
 function PlaceBadge({ place }: { place: number }) {
-  if (place === 1) return <Crown aria-hidden className="mx-1.5 size-5 shrink-0 text-amber-400" />;
+  if (place === 1) return <Crown aria-hidden className="mx-1.5 size-5 shrink-0 text-amber-500 dark:text-amber-400" />;
   if (place === 2) return <Medal aria-hidden className="mx-1.5 size-5 shrink-0 text-slate-400" />;
   if (place === 3) return <Medal aria-hidden className="mx-1.5 size-5 shrink-0 text-orange-500" />;
   return (

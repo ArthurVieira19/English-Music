@@ -17,10 +17,10 @@ interface DifficultyOption {
 }
 
 const DIFFICULTY_OPTIONS: DifficultyOption[] = [
-  { value: "beginner", icon: <Smile className="size-5" />, tone: "text-secondary" },
-  { value: "intermediate", icon: <Meh className="size-5" />, tone: "text-primary" },
-  { value: "advanced", icon: <Frown className="size-5" />, tone: "text-orange-400" },
-  { value: "expert", icon: <Skull className="size-5" />, tone: "text-destructive" },
+  { value: "beginner", icon: <Smile className="size-5" />, tone: "text-tier-1" },
+  { value: "intermediate", icon: <Meh className="size-5" />, tone: "text-tier-2" },
+  { value: "advanced", icon: <Frown className="size-5" />, tone: "text-tier-3" },
+  { value: "expert", icon: <Skull className="size-5" />, tone: "text-tier-4" },
 ]
 
 /**
