@@ -25,7 +25,7 @@ interface LyricsPanelProps {
 }
 
 /**
- * Full, scrollable lyrics view below the video — every line is visible at
+ * Full, scrollable lyrics view beside (or below) the video — every line is visible at
  * once, the active line auto-scrolls into view and hosts the fill-in-the-blank
  * exercise, and clicking any other line seeks the video to it (like a Spotify
  * lyrics panel).
@@ -60,10 +60,11 @@ export function LyricsPanel({
   if (exercises.length === 0) return null
 
   return (
-    <div className="glass overflow-hidden rounded-2xl">
+    // Fills whatever height the game screen gives it; only this panel scrolls, never the page.
+    <div className="glass h-full overflow-hidden rounded-2xl">
       <div
         ref={scrollRef}
-        className="relative h-[42svh] min-h-60 overflow-y-auto overscroll-contain px-3 py-8 [mask-image:linear-gradient(to_bottom,transparent,black_2.5rem,black_calc(100%-2.5rem),transparent)] sm:h-[28rem] lg:h-[70vh]"
+        className="relative h-full overflow-y-auto overscroll-contain px-3 py-6 [mask-image:linear-gradient(to_bottom,transparent,black_2rem,black_calc(100%-2rem),transparent)] lg:py-8"
       >
         <div className="flex flex-col gap-2">
           {exercises.map((line, index) => {

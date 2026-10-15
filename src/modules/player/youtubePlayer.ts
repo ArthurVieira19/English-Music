@@ -74,6 +74,10 @@ export interface YouTubePlayerOptions {
   onReady?: () => void
   onStateChange?: (state: number) => void
   onError?: (errorCode: number) => void
+  /** YouTube's own controls and keyboard shortcuts. On by default; off when the app decides what part of the video plays. */
+  controls?: boolean
+  /** Play in place on iPhones instead of taking over the screen, which would hide the card being answered. */
+  playsInline?: boolean
 }
 
 /** MediaPlayer implementation backed by the YouTube iframe API. */
@@ -90,7 +94,9 @@ export class YouTubePlayer implements MediaPlayer {
       this.player = new YT.Player(options.elementId, {
         videoId: options.videoId,
         playerVars: {
-          controls: 1,
+          controls: options.controls === false ? 0 : 1,
+          ...(options.controls === false ? { disablekb: 1 } : {}),
+          ...(options.playsInline ? { playsinline: 1 } : {}),
           modestbranding: 1,
           rel: 0,
           // Our own synced captions replace YouTube's native ones.

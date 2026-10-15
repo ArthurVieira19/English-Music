@@ -3,13 +3,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { ArrowRight, Trophy, X } from "lucide-react";
+import { ArrowRight, Play, Trophy, X } from "lucide-react";
 import type { WeakWord } from "@/types/WeakWord";
+import { useLibraryStore } from "@/stores/libraryStore";
 import { useReviewStore } from "@/stores/reviewStore";
 import { useStatsStore } from "@/stores/statsStore";
 import { ReviewSession, type ReviewSummary } from "@/components/review-session";
 import { buildReviewCard } from "@/modules/review/reviewCard";
+import { buildReviewItems, type ReviewItem } from "@/modules/review/reviewItems";
 import { SRS_INTERVALS_DAYS } from "@/modules/review/spacedRepetition";
+import { weakWordKey } from "@/modules/review/weakWordKey";
 import { Button } from "@/components/ui/button";
 import { useCountUp } from "@/hooks/useCountUp";
 import { cn } from "@/lib/utils";
@@ -20,6 +23,7 @@ const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
 export default function ReviewPage() {
   const weakWords = useReviewStore((s) => s.weakWords);
+  const songs = useLibraryStore((s) => s.songs);
   const addXp = useStatsStore((s) => s.addXp);
 
   const [view, setView] = useState<ViewState>("idle");
@@ -37,9 +41,15 @@ export default function ReviewPage() {
     () => sortedWords.filter((w) => w.nextReviewAt <= Date.now()),
     [sortedWords],
   );
+  // Words missed in the same line are one card, so the page counts cards, not words.
+  const dueItems = useMemo(() => buildReviewItems(dueWords, songs), [dueWords, songs]);
+  const nextItem = useMemo(
+    () => dueItems[0] ?? buildReviewItems(sortedWords.slice(0, 1), songs)[0],
+    [dueItems, sortedWords, songs],
+  );
 
-  function startSession() {
-    setSessionWords(dueWords);
+  function startSession(words: WeakWord[]) {
+    setSessionWords(words);
     setSummary(null);
     setView("session");
   }
@@ -56,20 +66,38 @@ export default function ReviewPage() {
   }
 
   if (view === "summary" && summary) {
-    return <ReviewSummaryScreen summary={summary} onReviewMore={startSession} moreDue={dueWords.length > 0} />;
+    return (
+      <ReviewSummaryScreen
+        summary={summary}
+        onReviewMore={() => startSession(dueWords)}
+        moreDue={dueWords.length > 0}
+      />
+    );
   }
 
-  return <ReviewLanding words={sortedWords} dueCount={dueWords.length} onStart={startSession} />;
+  return (
+    <ReviewLanding
+      words={sortedWords}
+      dueLines={dueItems.length}
+      nextItem={nextItem}
+      onStart={() => startSession(dueWords)}
+      onPractice={(word) => startSession([word])}
+    />
+  );
 }
 
 function ReviewLanding({
   words,
-  dueCount,
+  dueLines,
+  nextItem,
   onStart,
+  onPractice,
 }: {
   words: WeakWord[];
-  dueCount: number;
+  dueLines: number;
+  nextItem: ReviewItem | undefined;
   onStart: () => void;
+  onPractice: (word: WeakWord) => void;
 }) {
   const now = Date.now();
   const due = words.filter((w) => w.nextReviewAt <= now);
@@ -80,7 +108,8 @@ function ReviewLanding({
       <header className="max-w-2xl">
         <h1 className="font-display text-2xl font-semibold tracking-tight md:text-3xl">Review</h1>
         <p className="mt-1 text-muted-foreground text-pretty">
-          Words you missed in any song come back here, spaced further apart each time you get them right.
+          When you miss a word in a song, that exact moment of the video comes back here. Hear it again and fill in
+          the word; each time you get it right it returns later.
         </p>
       </header>
 
@@ -93,13 +122,14 @@ function ReviewLanding({
         className="navy-stage dark mt-6 grid gap-6 rounded-2xl p-5 sm:p-7 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] md:items-center"
       >
         <div>
-          {dueCount > 0 ? (
+          {dueLines > 0 ? (
             <>
               <p className="font-display text-3xl font-semibold tracking-tight">
-                {dueCount} {dueCount === 1 ? "word is" : "words are"} due
+                {dueLines} {dueLines === 1 ? "line is" : "lines are"} due
               </p>
               <p className="mt-1 text-muted-foreground">
-                About {Math.max(1, Math.round(dueCount * 0.25))} min. Counts toward today&apos;s streak.
+                {due.length} missed {due.length === 1 ? "word" : "words"} · About {Math.max(1, Math.round(dueLines * 0.5))}{" "}
+                min. Counts toward today&apos;s streak.
               </p>
               <Button size="lg" className="group mt-5 h-11 gap-2 rounded-full px-6 text-base" onClick={onStart}>
                 Start review
@@ -114,7 +144,7 @@ function ReviewLanding({
               <p className="mt-1 text-muted-foreground text-pretty">
                 {words.length > 0
                   ? `The next ${upcoming.length === 1 ? "word comes" : "words come"} back ${formatDue(upcoming[0]?.nextReviewAt)}.`
-                  : "Miss a word in any song and it lands here, with the line you heard it in."}
+                  : "Miss a word in any song and it lands here, with the moment of the video you heard it in."}
               </p>
               <Button
                 variant="outline"
@@ -128,11 +158,11 @@ function ReviewLanding({
           )}
         </div>
 
-        <CardPreview word={due[0] ?? upcoming[0]} />
+        <CardPreview item={nextItem} />
       </motion.section>
 
-      {due.length > 0 && <WordGroup title="Due now" words={due} />}
-      {upcoming.length > 0 && <WordGroup title="Coming up" words={upcoming} />}
+      {due.length > 0 && <WordGroup title="Due now" words={due} onPractice={onPractice} />}
+      {upcoming.length > 0 && <WordGroup title="Coming up" words={upcoming} onPractice={onPractice} />}
     </div>
   );
 }
@@ -144,9 +174,9 @@ function formatDue(timestamp: number | undefined): string {
   return `in ${days} days`;
 }
 
-/** What a review card looks like, built from a real word, so the screen teaches the format before you start. */
-function CardPreview({ word }: { word: WeakWord | undefined }) {
-  if (!word) {
+/** What a review card looks like, built from a real line, so the screen teaches the format before you start. */
+function CardPreview({ item }: { item: ReviewItem | undefined }) {
+  if (!item) {
     return (
       <div aria-hidden className="rounded-xl border border-dashed border-border px-5 py-6 text-center">
         <p className="font-display text-lg text-muted-foreground">
@@ -154,13 +184,16 @@ function CardPreview({ word }: { word: WeakWord | undefined }) {
           never call
         </p>
         <p className="mt-2 text-sm text-muted-foreground">
-          Each card is a line from a song, with the word you missed blanked out.
+          Each card replays a moment of a song, with the word you missed blanked out.
         </p>
       </div>
     );
   }
 
-  const { tokens, blankIndices } = buildReviewCard(word.contextText, word.word);
+  const { tokens, blankIndices } = buildReviewCard(
+    item.contextText,
+    item.words.map((w) => w.word),
+  );
   return (
     <figure className="rounded-xl bg-background/60 px-5 py-5 ring-1 ring-border">
       <blockquote className="font-display text-lg leading-relaxed text-balance">
@@ -177,14 +210,25 @@ function CardPreview({ word }: { word: WeakWord | undefined }) {
           </span>
         ))}
       </blockquote>
-      <figcaption className="mt-3 text-sm text-muted-foreground">
-        From {word.songTitle} · {word.artist}
+      <figcaption className="mt-3 flex items-center gap-1.5 text-sm text-muted-foreground">
+        {item.video && <Play aria-hidden className="size-3.5 shrink-0 text-primary" fill="currentColor" />}
+        <span className="truncate">
+          From {item.songTitle} · {item.artist}
+        </span>
       </figcaption>
     </figure>
   );
 }
 
-function WordGroup({ title, words }: { title: string; words: WeakWord[] }) {
+function WordGroup({
+  title,
+  words,
+  onPractice,
+}: {
+  title: string;
+  words: WeakWord[];
+  onPractice: (word: WeakWord) => void;
+}) {
   const removeWord = useReviewStore((s) => s.removeWord);
 
   return (
@@ -199,12 +243,13 @@ function WordGroup({ title, words }: { title: string; words: WeakWord[] }) {
           const isDue = daysUntilDue <= 0;
 
           return (
-            <li key={word.word} className="group flex items-center gap-4 py-3">
+            <li key={weakWordKey(word)} className="group flex items-center gap-4 py-3">
               <div className="min-w-0 flex-1">
                 <p className="font-display text-base font-semibold">{word.word}</p>
                 <p className="truncate text-sm text-muted-foreground">
                   {word.songTitle} · missed {word.timesWrong}×
                 </p>
+                <p className="truncate text-sm text-muted-foreground/70">&ldquo;{word.contextText}&rdquo;</p>
               </div>
               <LadderDots step={word.intervalIndex} />
               <span
@@ -217,8 +262,17 @@ function WordGroup({ title, words }: { title: string; words: WeakWord[] }) {
               </span>
               <button
                 type="button"
-                onClick={() => removeWord(word.word)}
-                aria-label={`Forget "${word.word}" — stop tracking it for review`}
+                onClick={() => onPractice(word)}
+                aria-label={`Practice "${word.word}" from ${word.songTitle} now`}
+                title="Practice this now"
+                className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+              >
+                <Play aria-hidden className="size-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => removeWord(word)}
+                aria-label={`Forget "${word.word}" from ${word.songTitle} — stop tracking it for review`}
                 title="Forget this word"
                 className="shrink-0 rounded-full p-1.5 text-muted-foreground transition-[color,background-color,opacity] hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100"
               >

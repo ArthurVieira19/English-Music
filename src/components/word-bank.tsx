@@ -62,15 +62,15 @@ export function WordBank({
   const countOf = new Map(words.map((w) => [w.word, w.count]))
 
   return (
-    <div className="flex flex-col gap-2">
-      <p className="px-1 text-sm text-muted-foreground" aria-live="polite">
+    <div className="flex flex-col gap-1.5">
+      <p className="px-1 text-xs text-muted-foreground" aria-live="polite">
         {target ? "Which of these is being sung now?" : "Coming up next…"}
       </p>
-      <div role="group" aria-label="Word bank" className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3">
+      <div role="group" aria-label="Word bank" className="grid grid-cols-3 gap-2 lg:grid-cols-6">
         {Array.from({ length: WORD_BANK_SIZE }, (_, index) => {
           const word = slots[index] ?? null
           if (!word) {
-            return <div key={`empty-${index}`} aria-hidden className="min-h-12 rounded-xl border border-dashed border-border/50" />
+            return <div key={`empty-${index}`} aria-hidden className="min-h-11 rounded-xl border border-dashed border-border/50" />
           }
 
           const count = countOf.get(word) ?? 1
@@ -84,7 +84,7 @@ export function WordBank({
               aria-label={count > 1 ? `${word}, needed ${count} times` : word}
               onClick={() => target && onPick(target.tokenIndex, word)}
               className={cn(
-                "relative min-h-12 truncate rounded-xl border border-border bg-accent/60 px-4 font-body text-base font-medium transition-colors duration-150",
+                "relative min-h-11 truncate rounded-xl border border-border bg-accent/60 px-3 font-body text-base font-medium transition-colors duration-150",
                 "enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary",
                 isRuledOut ? "text-destructive/60 line-through opacity-50" : "disabled:opacity-50",
               )}

@@ -72,6 +72,8 @@ async function bootstrap(user: User) {
     const role = await loadRole(user.id, isAdmin)
     if (isAdmin) await migrateLegacySongs(user.id)
     await useLibraryStore.getState().load()
+    // Words missed before clips existed learn which line of which song they came from.
+    useReviewStore.getState().upgradeLegacy(useLibraryStore.getState().songs)
 
     const email = user.email ?? ""
     auth.setAuthenticated({

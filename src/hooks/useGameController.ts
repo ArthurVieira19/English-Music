@@ -25,6 +25,7 @@ import { useStatsStore } from "@/stores/statsStore"
 import { useSettingsStore } from "@/stores/settingsStore"
 import { useAchievementStore } from "@/stores/achievementStore"
 import { useReviewStore } from "@/stores/reviewStore"
+import { findSourceLine } from "@/modules/review/reviewClip"
 
 const YOUTUBE_STATE_PLAYING = 1
 /** Only the rewind buttons' -10s/-5s math reads this from the store, so 5Hz is plenty; GameSynchronizer tracks its own per-frame clock for lyric sync. */
@@ -310,19 +311,27 @@ export function useGameController(
    * a correct answer for a word already flagged as weak nudges it toward
    * mastery. Words never missed are never tracked here.
    */
-  function recordWeakWordOutcome(line: ExerciseLine, token: { answer?: string }, isCorrect: boolean) {
+  function recordWeakWordOutcome(line: ExerciseLine, token: { index: number; answer?: string }, isCorrect: boolean) {
     if (!token.answer) return
     const word = normalize(token.answer)
     if (!word) return
 
+    // The game plays chunks of several lyric lines; Review only needs the one
+    // line the word is in, so it replays that exact moment of the video. A word
+    // is tracked per line of a song, so a right answer only counts for the
+    // entry made in this same line.
+    const source = findSourceLine(song.lyrics, line, token.index)
+    const contextText = source?.text ?? line.text
+
     if (isCorrect) {
-      useReviewStore.getState().recordCorrect(word)
+      useReviewStore.getState().recordCorrect({ word, songId: song.id, contextText })
     } else {
       useReviewStore.getState().recordMiss(word, {
         songId: song.id,
         songTitle: song.title,
         artist: song.artist,
-        contextText: line.text,
+        contextText,
+        clip: { start: source?.start ?? line.start, end: source?.end ?? line.end },
       })
     }
   }

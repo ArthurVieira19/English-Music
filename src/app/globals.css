@@ -267,6 +267,10 @@
   .pb-safe-bar {
     padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
   }
+  /* The game screen has no tab bar and fits the viewport itself, with its controls docked inside it. */
+  .pb-safe-bar:has([data-game-screen]) {
+    padding-bottom: 0;
+  }
   .safe-bottom {
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
   }

@@ -26,4 +26,13 @@ describe("buildReviewCard", () => {
     const { blankIndices } = buildReviewCard("She is lovely and beloved", "love")
     expect(blankIndices.size).toBe(0)
   })
+
+  it("blanks several missed words in one line and says which blank is which", () => {
+    const { blankIndices, blankWords } = buildReviewCard("Take me to the river, take me home", ["river", "home", "take"])
+
+    expect([...blankIndices].sort((a, b) => a - b)).toEqual([0, 4, 5, 7]) // "Take" "river," "take" "home"
+    expect(blankWords.get(0)).toBe("take")
+    expect(blankWords.get(4)).toBe("river")
+    expect(blankWords.get(7)).toBe("home")
+  })
 })

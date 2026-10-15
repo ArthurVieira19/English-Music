@@ -24,7 +24,15 @@ const EXPLAIN_VISIBLE_MS = 12000
  * screen readers (role=status) and auto-dismissed, so it teaches without ever
  * blocking the next line.
  */
-export function MistakeNote({ note, onDismiss }: { note: MistakeNoteData; onDismiss: () => void }) {
+export function MistakeNote({
+  note,
+  onDismiss,
+  className,
+}: {
+  note: MistakeNoteData
+  onDismiss: () => void
+  className?: string
+}) {
   useEffect(() => {
     const timer = setTimeout(onDismiss, note.tone === "explain" ? EXPLAIN_VISIBLE_MS : NUDGE_VISIBLE_MS)
     return () => clearTimeout(timer)
@@ -40,6 +48,7 @@ export function MistakeNote({ note, onDismiss }: { note: MistakeNoteData; onDism
       className={cn(
         "glass flex items-start gap-3 rounded-2xl px-4 py-3",
         note.tone === "explain" ? "ring-1 ring-primary/30" : "ring-1 ring-secondary/30",
+        className,
       )}
     >
       <span

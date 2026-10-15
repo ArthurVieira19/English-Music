@@ -26,12 +26,15 @@ export function SyncControl({
   onChange,
   onTap,
   disabled,
+  compact = false,
 }: {
   offset: number
   onChange: (seconds: number) => void
   /** Calibrates against the highlighted line; false when there is nothing to calibrate against right now. */
   onTap: () => boolean
   disabled?: boolean
+  /** Icon-sized trigger (plus the offset once one is set), for the game's transport bar. */
+  compact?: boolean
 }) {
   const [hint, setHint] = useState<string | null>(null)
   const isAdjusted = offset !== 0
@@ -45,15 +48,21 @@ export function SyncControl({
       <PopoverTrigger
         disabled={disabled}
         aria-label={`Lyrics sync: ${describeOffset(offset)}`}
+        title={compact ? "Lyrics out of sync?" : undefined}
         className={cn(
-          "flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-3 text-sm font-medium transition-[transform,color,background-color] duration-150 disabled:opacity-40 enabled:active:scale-95",
+          "flex shrink-0 items-center gap-1.5 rounded-full border text-sm font-medium transition-[transform,color,background-color] duration-150 disabled:opacity-40 enabled:active:scale-95",
+          compact ? "h-10 min-w-10 justify-center px-3" : "h-9 px-3",
           isAdjusted
             ? "border-primary/40 bg-primary/15 text-primary"
             : "border-border bg-accent/60 text-muted-foreground enabled:hover:bg-accent enabled:hover:text-foreground",
         )}
       >
         <Timer aria-hidden className="size-4" />
-        <span>{isAdjusted ? describeOffset(offset) : "Lyrics out of sync?"}</span>
+        {compact ? (
+          isAdjusted && <span className="text-xs tabular-nums">{formatStep(offset)}</span>
+        ) : (
+          <span>{isAdjusted ? describeOffset(offset) : "Lyrics out of sync?"}</span>
+        )}
       </PopoverTrigger>
 
       <PopoverContent className="w-72" side="top" align="end">

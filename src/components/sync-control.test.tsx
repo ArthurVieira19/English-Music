@@ -29,6 +29,18 @@ describe("SyncControl", () => {
     expect(screen.getByRole("button", { name: "Lyrics sync: Lyrics 2.5s later" })).toHaveTextContent("Lyrics 2.5s later")
   })
 
+  it("is just an icon in the transport bar while the lyrics are in sync", () => {
+    setup({ compact: true })
+
+    expect(screen.getByRole("button", { name: "Lyrics sync: In sync" })).toHaveTextContent("")
+  })
+
+  it("shows the correction in short form in the transport bar once adjusted", () => {
+    setup({ compact: true, offset: -1.5 })
+
+    expect(screen.getByRole("button", { name: "Lyrics sync: Lyrics 1.5s earlier" })).toHaveTextContent("−1.5s")
+  })
+
   it("nudges relative to the current offset", async () => {
     const { user, onChange } = setup({ offset: 1 })
     await open(user)

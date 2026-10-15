@@ -311,7 +311,7 @@ export function ExerciseChoicesView({
       aria-label="Choose the missing word"
       // Keyed by token so a new blank's options re-run their entrance.
       key={`${exerciseIndex}:${nextChoiceToken.index}`}
-      className="grid grid-cols-2 gap-2 sm:gap-3"
+      className="grid grid-cols-2 gap-2 sm:grid-cols-4"
     >
       {nextChoiceToken.choices?.map((choice, i) => (
         <motion.button
@@ -323,7 +323,7 @@ export function ExerciseChoicesView({
           whileTap={{ scale: 0.96 }}
           disabled={ruledOut.includes(choice)}
           onClick={() => onSubmit(nextChoiceToken.index, choice)}
-          className="min-h-12 truncate rounded-xl border border-border bg-accent/60 px-4 font-body text-base font-medium transition-colors duration-150 enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
+          className="min-h-11 truncate rounded-xl border border-border bg-accent/60 px-3 font-body text-base font-medium transition-colors duration-150 enabled:hover:border-secondary/50 enabled:hover:bg-secondary/10 enabled:hover:text-secondary disabled:text-destructive/60 disabled:line-through disabled:opacity-50"
         >
           {choice}
         </motion.button>
