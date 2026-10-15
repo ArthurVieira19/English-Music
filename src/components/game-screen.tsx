@@ -71,6 +71,7 @@ export function GameScreen({
 
   const activeLine = exercises[activeExerciseIndex];
   const isPausedForRetry = pendingRetryLineIndex !== null;
+  const hasAnswerButtons = mode === "multipleChoice" || mode === "wordBank";
   // Dense lines fall back to typing even in Choice mode (see
   // exerciseGenerator's forcedTyping), so check for real choices to show.
   const hasPendingChoice =
@@ -176,7 +177,7 @@ export function GameScreen({
       data-keyboard-open={keyboardOpen || undefined}
       onMouseDown={keyboardOpen ? keepTypingFocus : undefined}
       className={cn(
-        "relative isolate mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:gap-4 lg:pt-4 lg:pb-4",
+        "relative isolate mx-auto flex max-w-7xl flex-col gap-2 px-4 pt-2 lg:gap-4 lg:pt-4 lg:pb-4",
         keyboardOpen
           ? "fixed inset-x-0 top-[var(--vv-top)] z-50 h-[var(--vvh)] gap-2 bg-background pt-2"
           : "h-[calc(100dvh-4rem-1px)] min-h-[32rem]",
@@ -192,7 +193,7 @@ export function GameScreen({
           <SongThumbnail song={song} className="hidden w-16 shrink-0 rounded-md ring-1 ring-foreground/10 sm:block" />
           <div className="min-w-0">
             <h1 className="truncate font-display text-base font-semibold lg:text-lg">{song.title}</h1>
-            <p className="flex items-center gap-2 truncate text-sm text-muted-foreground">
+            <p className="hidden items-center gap-2 truncate sm:flex text-sm text-muted-foreground">
               <span className="truncate">{song.artist}</span>
               <span aria-hidden className="hidden sm:inline">·</span>
               <DifficultyMeter difficulty={level.difficulty} label={levelLabel(level)} className="hidden sm:inline-flex" />
@@ -211,7 +212,7 @@ export function GameScreen({
           lyrics filling the right column. */}
       <div
         className={cn(
-          "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 [grid-template-areas:'video'_'lyrics'_'dock'] lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-4 lg:[grid-template-areas:'video_lyrics'_'dock_lyrics']",
+          "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-2 [grid-template-areas:'video'_'lyrics'_'dock'] lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-4 lg:[grid-template-areas:'video_lyrics'_'dock_lyrics']",
           keyboardOpen && "gap-2",
         )}
       >
@@ -226,7 +227,8 @@ export function GameScreen({
               "relative mx-auto aspect-video overflow-hidden rounded-xl ring-1 ring-foreground/10 transition-shadow duration-500 lg:w-[min(100cqw,calc(100cqh*16/9))] lg:max-w-none",
               keyboardOpen
                 ? "mx-0 h-[calc(var(--vvh)*0.25)] w-auto shrink-0 lg:mx-auto lg:h-auto"
-                : "w-full max-w-[calc(30dvh*16/9)]",
+                : // Choice and word bank need room for their buttons, so the video gives up a little.
+                  cn("w-full", hasAnswerButtons ? "max-w-[calc(24dvh*16/9)]" : "max-w-[calc(30dvh*16/9)]"),
               isPlaying && "shadow-[0_0_0_1px_var(--glow-primary)]",
             )}
           >
@@ -287,12 +289,12 @@ export function GameScreen({
           />
         </div>
 
-        <div className="flex flex-col gap-3 [grid-area:dock]">
+        <div className="flex flex-col gap-2 [grid-area:dock]">
           {/* Always there in Choice mode, empty slots between blanks, so the
               buttons never jump and the video never resizes under them. */}
           {/* With the keyboard up the line being typed is a typed one, so the empty slots would only take room. */}
           {mode === "multipleChoice" && !(keyboardOpen && !hasPendingChoice) && (
-            <div className="glass rounded-2xl p-2.5 sm:p-3">
+            <div className="glass rounded-2xl p-2 sm:p-3">
               {activeLine && hasPendingChoice ? (
                 <ExerciseChoicesView
                   line={activeLine}
@@ -302,7 +304,7 @@ export function GameScreen({
                   onSubmit={handleSubmit}
                 />
               ) : (
-                <div aria-hidden className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div aria-hidden className="grid grid-cols-2 gap-1.5 sm:gap-2 sm:grid-cols-4">
                   {Array.from({ length: 4 }, (_, i) => (
                     <div key={i} className="min-h-11 rounded-xl border border-dashed border-border/50" />
                   ))}
@@ -312,7 +314,7 @@ export function GameScreen({
           )}
 
           {mode === "wordBank" && activeLine?.mode === "wordBank" && (
-            <div className="glass rounded-2xl p-2.5 sm:p-3">
+            <div className="glass rounded-2xl p-2 sm:p-3">
               <WordBank
                 exercises={exercises}
                 lineIndex={activeExerciseIndex}
@@ -325,23 +327,25 @@ export function GameScreen({
           )}
 
           {/* Full-bleed bar on phones, a card from lg up. */}
-          {/* With the keyboard up: no progress row and only replay / play /
-              skip, and no home-indicator padding (the keyboard covers it). */}
+          {/* Below lg the progress is a thin line along its top edge, not a
+              row of its own. With the keyboard up: only replay / play / skip,
+              and no home-indicator padding (the keyboard covers it). */}
           <div
             className={cn(
-              "glass -mx-4 border-x-0 border-b-0 px-4 pt-2.5 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:py-3",
+              "glass relative -mx-4 border-x-0 border-b-0 px-4 pt-2.5 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:py-3",
               keyboardOpen ? "pb-2 pt-2" : "safe-bottom",
             )}
           >
             <div className="flex flex-col gap-2.5">
-              <div className={cn("flex items-center gap-3", keyboardOpen && "hidden")}>
+              <div className="absolute inset-x-0 top-0 flex items-center gap-3 lg:static">
                 <div
                   role="progressbar"
                   aria-label="Song completion"
                   aria-valuemin={0}
                   aria-valuemax={totalHidden}
                   aria-valuenow={totalAnswers}
-                  className="relative h-1.5 flex-1 overflow-hidden rounded-full bg-muted"
+                  aria-valuetext={`${totalAnswers} of ${totalHidden} words`}
+                  className="relative h-0.5 flex-1 overflow-hidden bg-muted lg:h-1.5 lg:rounded-full"
                 >
                   <motion.div
                     className="absolute inset-0 origin-left rounded-full bg-primary"
@@ -350,7 +354,7 @@ export function GameScreen({
                     transition={{ duration: 0.4, ease: EASE_OUT }}
                   />
                 </div>
-                <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                <span className="hidden shrink-0 text-xs text-muted-foreground tabular-nums lg:inline">
                   {totalAnswers}/{totalHidden} words
                 </span>
               </div>

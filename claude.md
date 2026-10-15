@@ -176,6 +176,12 @@ Goal: improve how much English people actually retain, not just app polish. Brai
   - Game blanks: `autoCapitalize`/`autoCorrect` off, `enterKeyHint="next"`, text stays ≥16px (iOS zooms into smaller fields), `scroll-my-3` instead of the old `scroll-mb-40` (the dock isn't fixed any more).
   - Not tested on a real phone: DevTools can't emulate the on-screen keyboard. Still unknown: iOS closes the keyboard when the focused blank unmounts at the end of a line, and a programmatic focus on the next line can't reopen it, so the player may have to tap the next blank.
 
+- **Long lines fit the lyrics panel on phones** (2026-10-15). In Choice mode on a ~360×690 phone the panel got ~130px, less than a 2-row line at 24px, so players had to drag to find the blank.
+  - **The active line shrinks to fit.** `LyricsPanel` measures the panel's inner height and sets `--fit-font` on the active line to the largest whole px (natural size down to `MIN_FIT_FONT_PX` = 16, iOS's no-zoom floor) at which the line fits (`fitFontSize` in `modules/game/fitText.ts`, a binary search of ~4 layout reads). `ExerciseLineView` reads it as `text-[length:var(--fit-font,1.5rem)]`, so without the variable it's the old text-2xl / sm:text-3xl. Runs in a layout effect (no flash at full size) on line change and on every answer, and again (unanimated) when the panel resizes (`ResizeObserver`: keyboard, rotation).
+  - **Safety net:** if the line doesn't fit even at 16px, the panel scrolls so the first open blank (`data-open-blank` on inputs and placeholders) sits 30% down, and follows it as blanks are answered.
+  - **Space given back below `lg`:** panel `py-2` with a 0.75rem fade (was `py-6`, 2rem), progress is a 2px line along the top of the transport bar (the "x/y words" text only from `lg`; `aria-valuetext` keeps it for screen readers), video capped at 24dvh in Choice and Word bank (30dvh still for typing), artist line hidden below `sm`, gaps 3→2, choice/word-bank padding and gaps a notch tighter (buttons stay `min-h-11`).
+  - Not checked on a real phone yet.
+
 ## Still open
 
 - **Lives / game over** is an untried gameplay change that needs a product decision (as an optional challenge mode at most).

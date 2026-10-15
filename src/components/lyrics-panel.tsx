@@ -1,16 +1,37 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import { motion } from "framer-motion"
 import type { ExerciseLine } from "@/types/ExerciseLine"
 import { ExerciseLineView } from "@/components/exercise-line"
 import { answeredTokenKey } from "@/stores/gameStore"
 import { WordDefinitionPopover } from "@/components/word-definition-popover"
 import { detectSwipe, type SwipePoint } from "@/modules/game/swipe"
+import { fitFontSize } from "@/modules/game/fitText"
 import { cn } from "@/lib/utils"
 
-/** Room left above the active line in compact mode, so its highlight isn't cut off by the panel edge. */
+/** Room left above the active line when it is pinned to the top, so its highlight isn't cut off by the panel edge. */
 const COMPACT_TOP_GAP_PX = 4
+/** A line too long to fit even at the smallest font is scrolled so its open blank sits this far down the panel. */
+const OVERFLOW_BLANK_POSITION = 0.3
+
+/**
+ * Sets --fit-font on `target` to the largest size at which `line` is no
+ * taller than `available`, or clears it when the line fits as it is.
+ */
+function fitLine(target: HTMLElement | null, line: HTMLElement, available: number) {
+  const text = target?.firstElementChild
+  if (!target || !text || available <= 0) return
+  target.style.removeProperty("--fit-font")
+  const natural = parseFloat(getComputedStyle(text).fontSize)
+  if (!Number.isFinite(natural)) return
+  const size = fitFontSize(natural, (px) => {
+    target.style.setProperty("--fit-font", `${px}px`)
+    return line.offsetHeight <= available
+  })
+  if (size === null) target.style.removeProperty("--fit-font")
+  else target.style.setProperty("--fit-font", `${size}px`)
+}
 
 interface LyricsPanelProps {
   exercises: ExerciseLine[]
@@ -51,22 +72,75 @@ export function LyricsPanel({
   const swipeStartRef = useRef<SwipePoint | null>(null)
   const lineRefs = useRef<Record<number, HTMLDivElement | null>>({})
 
+  // Carries --fit-font, the active line's shrunk font size (ExerciseLineView reads it).
+  const fitRef = useRef<HTMLDivElement | null>(null)
+  const hasExercises = exercises.length > 0
+
+  // Shrinks the active line's font until the whole line fits the panel, then
+  // scrolls it into view. If even the smallest size doesn't fit, it scrolls
+  // to the blank being answered instead, so the player never has to drag.
+  //
   // Scrolls only this panel. `scrollIntoView` also scrolls every scrollable
   // ancestor — on a phone that's the page itself, which yanked the video out
   // of view on every line change.
+  const layoutActiveLine = useCallback(
+    (behavior: ScrollBehavior) => {
+      const container = scrollRef.current
+      const line = lineRefs.current[activeExerciseIndex]
+      if (!container || !line) return
+
+      const padding = getComputedStyle(container)
+      const available =
+        container.clientHeight - parseFloat(padding.paddingTop || "0") - parseFloat(padding.paddingBottom || "0")
+      fitLine(fitRef.current, line, available)
+
+      let top: number
+      if (line.offsetHeight > available) {
+        const blank = line.querySelector<HTMLElement>("[data-open-blank]")
+        top = blank
+          ? container.scrollTop +
+            blank.getBoundingClientRect().top -
+            container.getBoundingClientRect().top -
+            available * OVERFLOW_BLANK_POSITION
+          : line.offsetTop - COMPACT_TOP_GAP_PX
+      } else if (compact) {
+        // Compact is too short to center in: what matters is the line being typed and the next one.
+        top = line.offsetTop - COMPACT_TOP_GAP_PX
+      } else {
+        top = line.offsetTop - (container.clientHeight - line.offsetHeight) / 2
+      }
+      container.scrollTo({ top: Math.max(0, top), behavior })
+    },
+    [activeExerciseIndex, compact],
+  )
+
+  // Before paint, so a long line never flashes at full size. Answers re-run
+  // it: a revealed word is a little wider than its blank, and the next blank
+  // may be further down.
+  useLayoutEffect(() => {
+    layoutActiveLine("smooth")
+  }, [layoutActiveLine, answeredTokens])
+
+  // The panel changes size with the phone keyboard, rotation or a resized
+  // window: fit again, without animating.
+  const layoutRef = useRef(layoutActiveLine)
+  useLayoutEffect(() => {
+    layoutRef.current = layoutActiveLine
+  })
   useEffect(() => {
     const container = scrollRef.current
-    const line = lineRefs.current[activeExerciseIndex]
-    if (!container || !line) return
+    if (!hasExercises || !container || typeof ResizeObserver === "undefined") return
+    let isFirst = true
+    const observer = new ResizeObserver(() => {
+      // The first call is just observe() reporting the current size.
+      if (isFirst) isFirst = false
+      else layoutRef.current("auto")
+    })
+    observer.observe(container)
+    return () => observer.disconnect()
+  }, [hasExercises])
 
-    // Compact is too short to center in: what matters is the line being typed and the next one.
-    const top = compact
-      ? line.offsetTop - COMPACT_TOP_GAP_PX
-      : line.offsetTop - (container.clientHeight - line.clientHeight) / 2
-    container.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
-  }, [activeExerciseIndex, compact])
-
-  if (exercises.length === 0) return null
+  if (!hasExercises) return null
 
   return (
     // Fills whatever height the game screen gives it; only this panel scrolls, never the page.
@@ -75,9 +149,10 @@ export function LyricsPanel({
         ref={scrollRef}
         className={cn(
           "relative h-full overflow-y-auto overscroll-contain px-3",
+          // Phones get thin edges and a short fade: every pixel there goes to the active line.
           compact
             ? "py-2 [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]"
-            : "py-6 [mask-image:linear-gradient(to_bottom,transparent,black_2rem,black_calc(100%-2rem),transparent)] lg:py-8",
+            : "py-2 [mask-image:linear-gradient(to_bottom,transparent,black_0.75rem,black_calc(100%-0.75rem),transparent)] lg:py-8 lg:[mask-image:linear-gradient(to_bottom,transparent,black_2rem,black_calc(100%-2rem),transparent)]",
         )}
       >
         <div className="flex flex-col gap-2">
@@ -116,7 +191,7 @@ export function LyricsPanel({
                     className="absolute inset-0 rounded-xl bg-accent ring-1 ring-secondary/25"
                     transition={{ type: "spring", stiffness: 380, damping: 36 }}
                   />
-                  <div className="relative">
+                  <div ref={fitRef} className="relative">
                     <ExerciseLineView
                       line={line}
                       exerciseIndex={index}

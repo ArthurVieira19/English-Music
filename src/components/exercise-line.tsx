@@ -67,7 +67,10 @@ export function ExerciseLineView({
     <div
       className={cn(
         "flex flex-wrap items-center justify-center gap-x-2.5 gap-y-3 text-center font-display leading-relaxed",
-        caption ? "text-lg text-white drop-shadow-sm sm:text-2xl" : "text-2xl sm:text-3xl",
+        // --fit-font: set by LyricsPanel to shrink a line too long for the panel (text-2xl / sm:text-3xl otherwise).
+        caption
+          ? "text-lg text-white drop-shadow-sm sm:text-2xl"
+          : "text-[length:var(--fit-font,1.5rem)] sm:text-[length:var(--fit-font,1.875rem)]",
       )}
     >
       {line.tokens.map((token) => {
@@ -172,6 +175,7 @@ function ExerciseTokenView({
     return (
       <span
         aria-label={token.answer ? `Missing word, ${token.answer.length} letters` : "Missing word"}
+        data-open-blank
         className={cn("tracking-widest", caption ? "text-white/50" : "text-secondary/60")}
       >
         {"•".repeat(blankWidth)}
@@ -185,6 +189,7 @@ function ExerciseTokenView({
       return (
         <span
           aria-label={token.answer ? `Missing word, ${token.answer.length} letters` : "Missing word"}
+          data-open-blank
           className={cn("tracking-widest", caption ? "text-white/50" : "text-secondary/60")}
         >
           {"•".repeat(blankWidth)}
@@ -221,6 +226,7 @@ function ExerciseTokenView({
 
   return (
     <motion.input
+      data-open-blank
       ref={inputRef}
       animate={shake}
       style={{ width }}
@@ -317,7 +323,7 @@ export function ExerciseChoicesView({
       aria-label="Choose the missing word"
       // Keyed by token so a new blank's options re-run their entrance.
       key={`${exerciseIndex}:${nextChoiceToken.index}`}
-      className="grid grid-cols-2 gap-2 sm:grid-cols-4"
+      className="grid grid-cols-2 gap-1.5 sm:grid-cols-4 sm:gap-2"
     >
       {nextChoiceToken.choices?.map((choice, i) => (
         <motion.button

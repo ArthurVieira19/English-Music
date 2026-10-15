@@ -66,7 +66,7 @@ export function WordBank({
       <p className="px-1 text-xs text-muted-foreground" aria-live="polite">
         {target ? "Which of these is being sung now?" : "Coming up next…"}
       </p>
-      <div role="group" aria-label="Word bank" className="grid grid-cols-3 gap-2 lg:grid-cols-6">
+      <div role="group" aria-label="Word bank" className="grid grid-cols-3 gap-1.5 sm:gap-2 lg:grid-cols-6">
         {Array.from({ length: WORD_BANK_SIZE }, (_, index) => {
           const word = slots[index] ?? null
           if (!word) {
