@@ -9,6 +9,9 @@ import { WordDefinitionPopover } from "@/components/word-definition-popover"
 import { detectSwipe, type SwipePoint } from "@/modules/game/swipe"
 import { cn } from "@/lib/utils"
 
+/** Room left above the active line in compact mode, so its highlight isn't cut off by the panel edge. */
+const COMPACT_TOP_GAP_PX = 4
+
 interface LyricsPanelProps {
   exercises: ExerciseLine[]
   activeExerciseIndex: number
@@ -22,6 +25,8 @@ interface LyricsPanelProps {
   onReplay?: () => void
   /** Enter in an empty blank (that blank), or a sideways swipe on the active line (its first open blank). */
   onSkipWord?: (tokenIndex?: number) => void
+  /** The phone's keyboard is up: tighter padding, and the active line sits at the top so the next one shows under it. */
+  compact?: boolean
 }
 
 /**
@@ -40,6 +45,7 @@ export function LyricsPanel({
   fuzzy = true,
   onReplay,
   onSkipWord,
+  compact = false,
 }: LyricsPanelProps) {
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const swipeStartRef = useRef<SwipePoint | null>(null)
@@ -53,9 +59,12 @@ export function LyricsPanel({
     const line = lineRefs.current[activeExerciseIndex]
     if (!container || !line) return
 
-    const top = line.offsetTop - (container.clientHeight - line.clientHeight) / 2
+    // Compact is too short to center in: what matters is the line being typed and the next one.
+    const top = compact
+      ? line.offsetTop - COMPACT_TOP_GAP_PX
+      : line.offsetTop - (container.clientHeight - line.clientHeight) / 2
     container.scrollTo({ top: Math.max(0, top), behavior: "smooth" })
-  }, [activeExerciseIndex])
+  }, [activeExerciseIndex, compact])
 
   if (exercises.length === 0) return null
 
@@ -64,7 +73,12 @@ export function LyricsPanel({
     <div className="glass h-full overflow-hidden rounded-2xl">
       <div
         ref={scrollRef}
-        className="relative h-full overflow-y-auto overscroll-contain px-3 py-6 [mask-image:linear-gradient(to_bottom,transparent,black_2rem,black_calc(100%-2rem),transparent)] lg:py-8"
+        className={cn(
+          "relative h-full overflow-y-auto overscroll-contain px-3",
+          compact
+            ? "py-2 [mask-image:linear-gradient(to_bottom,black_calc(100%-1.5rem),transparent)]"
+            : "py-6 [mask-image:linear-gradient(to_bottom,transparent,black_2rem,black_calc(100%-2rem),transparent)] lg:py-8",
+        )}
       >
         <div className="flex flex-col gap-2">
           {exercises.map((line, index) => {
@@ -79,7 +93,7 @@ export function LyricsPanel({
                     lineRefs.current[index] = el
                   }}
                   // pan-y: vertical drags still scroll the lyrics, sideways ones reach the swipe handler.
-                  className="relative touch-pan-y px-3 py-3"
+                  className={cn("relative touch-pan-y px-3", compact ? "py-2" : "py-3")}
                   onPointerDown={(event) => {
                     swipeStartRef.current =
                       event.pointerType === "touch" ? { x: event.clientX, y: event.clientY, time: event.timeStamp } : null

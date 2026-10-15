@@ -225,16 +225,22 @@ function ExerciseTokenView({
       animate={shake}
       style={{ width }}
       className={cn(
-        // scroll-mb: when a tap focuses the blank, the browser scrolls it clear of the fixed transport bar instead of leaving it underneath.
-        "inline-block scroll-mb-40 rounded-md border-0 border-b-2 border-dashed bg-transparent px-1 pb-0.5 text-center font-display font-semibold text-foreground outline-none placeholder:text-secondary/40 focus:border-solid",
+        // scroll-my: when the browser scrolls a focused blank into view, it leaves a little room around it.
+        // The text stays at 16px or more (text-2xl here): iOS zooms the page in on smaller fields.
+        "inline-block scroll-my-3 rounded-md border-0 border-b-2 border-dashed bg-transparent px-1 pb-0.5 text-center font-display font-semibold text-foreground outline-none placeholder:text-secondary/40 focus:border-solid",
         isLastTry
           ? "border-destructive/70 focus:border-destructive"
           : "border-secondary/60 focus:border-secondary",
       )}
       value={value}
       aria-label={isLastTry ? `${baseLabel} — last try` : baseLabel}
+      // Phone keyboards must not capitalise or "correct" what the player heard.
       autoComplete="off"
+      autoCapitalize="off"
+      autoCorrect="off"
       spellCheck={false}
+      // Enter submits the word, or skips it when empty: "next" on the keyboard's key.
+      enterKeyHint="next"
       onChange={(event) => {
         const next = event.target.value
         setTyped({ attempt: attemptsUsed, text: next })

@@ -169,6 +169,13 @@ Goal: improve how much English people actually retain, not just app polish. Brai
   - "Lyrics out of sync?" is an icon in the transport bar (`SyncControl compact`); the tips and keyboard shortcuts moved behind a `?` button next to the score.
   - Not checked in a real browser yet: the generated CSS was verified against the dev server, the layout itself was not seen.
 
+- **Game screen with the phone keyboard up** (2026-10-15). Phones don't shrink the layout viewport or `dvh` for the on-screen keyboard (iOS never; Chrome Android not by default), so the keyboard used to cover the dock. `useOnScreenKeyboard` (hooks/) reads `window.visualViewport`: it writes `--vvh` (height still visible) and `--vv-top` (how far the browser panned) on the game screen, and reports the keyboard open when a text field has focus *and* the view lost at least `KEYBOARD_MIN_HEIGHT_PX` (120) against the tallest height seen at that width (`modules/game/onScreenKeyboard.ts`; pinch-zoom is factored out, a hardware keyboard or a resized window doesn't count). Closing waits 150ms so focus moving between blanks doesn't flicker the layout.
+  - With the keyboard up the game screen becomes a `fixed` overlay at `top: var(--vv-top)`, `height: var(--vvh)`, over the site header: the title row is hidden, the video shrinks to a quarter of the visible height with score/combo beside it, mistake notes float over the top of the screen, the lyrics panel goes `compact` (active line pinned to the top so the next one shows), Choice mode's empty slots go, and the transport bar keeps only Replay / Play / Skip. The YouTube player is never moved or hidden (that would stop the music), only resized.
+  - While it's up, `mousedown` on anything but a field is `preventDefault`ed (`keepTypingFocus`), so tapping Replay doesn't steal focus from the blank and close the keyboard.
+  - `interactive-widget=resizes-content` was deliberately *not* set: it would make Android shrink every page for the keyboard (the fixed tab bar would ride up over it on /review), and iOS ignores it anyway; the visual-viewport approach covers both.
+  - Game blanks: `autoCapitalize`/`autoCorrect` off, `enterKeyHint="next"`, text stays ≥16px (iOS zooms into smaller fields), `scroll-my-3` instead of the old `scroll-mb-40` (the dock isn't fixed any more).
+  - Not tested on a real phone: DevTools can't emulate the on-screen keyboard. Still unknown: iOS closes the keyboard when the focused blank unmounts at the end of a line, and a programmatic focus on the next line can't reopen it, so the player may have to tap the next blank.
+
 ## Still open
 
 - **Lives / game over** is an untried gameplay change that needs a product decision (as an optional challenge mode at most).
@@ -180,4 +187,4 @@ Goal: improve how much English people actually retain, not just app polish. Brai
 - **"Shadowing"/pronunciation practice** mode via the Web Speech API.
 - **Contextual notes for idioms/slang**, which a per-word dictionary lookup can't explain (contractions and spoken reductions are now covered by the mistake analyzer, but only when the player gets them wrong).
 - **Adaptive difficulty within a song** (the level only changes between songs, via promotion).
-- **Mobile typing with the on-screen keyboard** hasn't been tested on a real device: the one-viewport game screen (see "Game screen fits one viewport") and the keyboard compete for a small viewport.
+- **Mobile typing with the on-screen keyboard** has a compact layout now (see "Game screen with the phone keyboard up") but hasn't been tested on a real device, including whether the keyboard stays open from one line to the next on iOS.

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { CircleHelp, Flame, Pause, Play, Repeat, RotateCcw, SkipForward, Star } from "lucide-react";
@@ -9,6 +9,8 @@ import type { Song } from "@/types/Song";
 import type { GameMode } from "@/types/GameMode";
 import { useGameController } from "@/hooks/useGameController";
 import { useGameShortcuts } from "@/hooks/useGameShortcuts";
+import { useOnScreenKeyboard } from "@/hooks/useOnScreenKeyboard";
+import { isTextField } from "@/modules/game/onScreenKeyboard";
 import { GAME_SHORTCUT_LEGEND } from "@/modules/game/gameShortcuts";
 import { useGameStore } from "@/stores/gameStore";
 import { usePlayerStore } from "@/stores/playerStore";
@@ -43,6 +45,10 @@ export function GameScreen({
   const router = useRouter();
   const elementId = `youtube-player-${song.id}`;
   const controller = useGameController(song, elementId, level, mode);
+  const screenRef = useRef<HTMLDivElement>(null);
+  // With the phone's keyboard up there are only ~400px left, so the screen
+  // turns into a compact overlay sized to what is still visible.
+  const keyboardOpen = useOnScreenKeyboard(screenRef);
 
   const exercises = useGameStore((s) => s.exercises);
   const activeExerciseIndex = useGameStore((s) => s.activeExerciseIndex);
@@ -135,21 +141,53 @@ export function GameScreen({
     controller.isReady && !controller.isComplete,
   );
 
+  const mistakeNote = (
+    <AnimatePresence initial={false}>
+      {note && (
+        <MistakeNote
+          key={note.id}
+          note={note}
+          onDismiss={dismissNote}
+          className={cn("absolute inset-x-2 top-2 shadow-lg", keyboardOpen ? "z-30" : "z-20")}
+        />
+      )}
+    </AnimatePresence>
+  );
+
+  const hud = (
+    <GameHud score={score} combo={combo} flash={flash} onFlashDone={(id) => setFlash((current) => (current?.id === id ? null : current))} />
+  );
+
   return (
     // Exactly one viewport tall (below the 4rem header), so every control is on
     // screen without scrolling: only the lyrics panel scrolls. Things that come
     // and go (the paused notice, mistake notes) float over the video instead of
     // pushing the answer buttons around. `data-game-screen` drops main's
     // tab-bar padding (see globals.css): the controls are docked in here.
+    //
+    // With the on-screen keyboard up, `dvh` doesn't shrink (the keyboard just
+    // covers the page), so the screen becomes a fixed overlay over the header,
+    // exactly as tall as what is still visible (--vvh, from
+    // useOnScreenKeyboard): small video with the score beside it, the lyrics,
+    // and only the replay / play / skip buttons.
     <div
+      ref={screenRef}
       data-game-screen
-      className="relative isolate mx-auto flex h-[calc(100dvh-4rem-1px)] min-h-[32rem] max-w-7xl flex-col gap-3 px-4 pt-3 lg:gap-4 lg:pt-4 lg:pb-4"
+      data-keyboard-open={keyboardOpen || undefined}
+      onMouseDown={keyboardOpen ? keepTypingFocus : undefined}
+      className={cn(
+        "relative isolate mx-auto flex max-w-7xl flex-col gap-3 px-4 pt-3 lg:gap-4 lg:pt-4 lg:pb-4",
+        keyboardOpen
+          ? "fixed inset-x-0 top-[var(--vv-top)] z-50 h-[var(--vvh)] gap-2 bg-background pt-2"
+          : "h-[calc(100dvh-4rem-1px)] min-h-[32rem]",
+      )}
     >
       <AmbientArt song={song} className="lg:-top-8" />
       <p role="status" aria-live="polite" className="sr-only">
         {announcement}
       </p>
-      <div className="flex shrink-0 items-center justify-between gap-3">
+      {keyboardOpen && mistakeNote}
+      <div className={cn("flex shrink-0 items-center justify-between gap-3", keyboardOpen && "hidden lg:flex")}>
         <div className="flex min-w-0 items-center gap-3">
           <SongThumbnail song={song} className="hidden w-16 shrink-0 rounded-md ring-1 ring-foreground/10 sm:block" />
           <div className="min-w-0">
@@ -162,41 +200,33 @@ export function GameScreen({
           </div>
         </div>
 
-        <div className="relative flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <GameHelp />
-          <HudStat icon={<Star className="size-3.5" />} label="Score" value={score} tone="primary" />
-          <ComboStat combo={combo} />
-          <AnimatePresence>
-            {flash && (
-              <motion.span
-                key={flash.id}
-                aria-hidden
-                initial={{ opacity: 0, y: 4, scale: 0.9 }}
-                animate={{ opacity: [0, 1, 1, 0], y: [4, -6, -14, -22], scale: 1 }}
-                transition={{ duration: 0.9, ease: EASE_OUT, times: [0, 0.15, 0.6, 1] }}
-                onAnimationComplete={() => setFlash((current) => (current?.id === flash.id ? null : current))}
-                className={cn(
-                  "pointer-events-none absolute -top-3 left-3 font-display text-sm font-bold tabular-nums",
-                  flash.tone === "hit" ? "text-secondary" : "text-destructive",
-                )}
-              >
-                {flash.label}
-              </motion.span>
-            )}
-          </AnimatePresence>
+          {hud}
         </div>
       </div>
 
       {/* Phones: video, lyrics, then the answer buttons and controls docked at
           the bottom (thumb reach). From lg: video and dock on the left, the
           lyrics filling the right column. */}
-      <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 [grid-template-areas:'video'_'lyrics'_'dock'] lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-4 lg:[grid-template-areas:'video_lyrics'_'dock_lyrics']">
+      <div
+        className={cn(
+          "grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)_auto] gap-3 [grid-template-areas:'video'_'lyrics'_'dock'] lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)] lg:grid-rows-[minmax(0,1fr)_auto] lg:gap-4 lg:[grid-template-areas:'video_lyrics'_'dock_lyrics']",
+          keyboardOpen && "gap-2",
+        )}
+      >
         {/* From lg the video takes whatever height is left over: the 16:9 box
-            is the largest that fits this area (container query units). */}
-        <div className="[grid-area:video] lg:[container-type:size]">
+            is the largest that fits this area (container query units). With
+            the keyboard up it shrinks to a quarter of what is visible, with
+            the score beside it (the title row is hidden). The player stays
+            mounted either way: moving or hiding it would stop the music. */}
+        <div className={cn("[grid-area:video] lg:[container-type:size]", keyboardOpen && "flex items-center gap-3 lg:block")}>
           <div
             className={cn(
-              "relative mx-auto aspect-video w-full max-w-[calc(30dvh*16/9)] overflow-hidden rounded-xl ring-1 ring-foreground/10 transition-shadow duration-500 lg:w-[min(100cqw,calc(100cqh*16/9))] lg:max-w-none",
+              "relative mx-auto aspect-video overflow-hidden rounded-xl ring-1 ring-foreground/10 transition-shadow duration-500 lg:w-[min(100cqw,calc(100cqh*16/9))] lg:max-w-none",
+              keyboardOpen
+                ? "mx-0 h-[calc(var(--vvh)*0.25)] w-auto shrink-0 lg:mx-auto lg:h-auto"
+                : "w-full max-w-[calc(30dvh*16/9)]",
               isPlaying && "shadow-[0_0_0_1px_var(--glow-primary)]",
             )}
           >
@@ -207,16 +237,8 @@ export function GameScreen({
               )}
             </div>
 
-            <AnimatePresence initial={false}>
-              {note && (
-                <MistakeNote
-                  key={note.id}
-                  note={note}
-                  onDismiss={dismissNote}
-                  className="absolute inset-x-2 top-2 z-20 shadow-lg"
-                />
-              )}
-            </AnimatePresence>
+            {/* Too small to hold a note with the keyboard up: it floats over the top of the screen then. */}
+            {!keyboardOpen && mistakeNote}
 
             {/* The video is stopped while this shows, so it covers nothing worth watching. */}
             <AnimatePresence initial={false}>
@@ -227,9 +249,12 @@ export function GameScreen({
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: 8, transition: { duration: 0.15 } }}
                   transition={{ duration: 0.22, ease: EASE_OUT }}
-                  className="absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 bg-gradient-to-t from-black/85 via-black/60 to-transparent px-3 pt-8 pb-3 sm:px-4"
+                  className={cn(
+                    "absolute inset-x-0 bottom-0 z-10 flex items-center justify-between gap-3 bg-gradient-to-t from-black/85 via-black/60 to-transparent px-3 pt-8 pb-3 sm:px-4",
+                    keyboardOpen && "justify-center px-2 pt-2 pb-2 sm:px-2",
+                  )}
                 >
-                  <p className="text-sm text-white/80">
+                  <p className={cn("text-sm text-white/80", keyboardOpen && "sr-only")}>
                     <span className="font-semibold text-white">Paused.</span> Didn&apos;t catch it?
                   </p>
                   <button
@@ -244,10 +269,12 @@ export function GameScreen({
               )}
             </AnimatePresence>
           </div>
+          {keyboardOpen && <div className="flex min-w-0 flex-col items-start gap-1.5 lg:hidden">{hud}</div>}
         </div>
 
         <div className="min-h-0 [grid-area:lyrics]">
           <LyricsPanel
+            compact={keyboardOpen}
             exercises={exercises}
             activeExerciseIndex={activeExerciseIndex}
             answeredTokens={answeredTokens}
@@ -263,7 +290,8 @@ export function GameScreen({
         <div className="flex flex-col gap-3 [grid-area:dock]">
           {/* Always there in Choice mode, empty slots between blanks, so the
               buttons never jump and the video never resizes under them. */}
-          {mode === "multipleChoice" && (
+          {/* With the keyboard up the line being typed is a typed one, so the empty slots would only take room. */}
+          {mode === "multipleChoice" && !(keyboardOpen && !hasPendingChoice) && (
             <div className="glass rounded-2xl p-2.5 sm:p-3">
               {activeLine && hasPendingChoice ? (
                 <ExerciseChoicesView
@@ -297,9 +325,16 @@ export function GameScreen({
           )}
 
           {/* Full-bleed bar on phones, a card from lg up. */}
-          <div className="glass safe-bottom -mx-4 border-x-0 border-b-0 px-4 pt-2.5 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:py-3">
+          {/* With the keyboard up: no progress row and only replay / play /
+              skip, and no home-indicator padding (the keyboard covers it). */}
+          <div
+            className={cn(
+              "glass -mx-4 border-x-0 border-b-0 px-4 pt-2.5 lg:mx-0 lg:rounded-2xl lg:border lg:px-4 lg:py-3",
+              keyboardOpen ? "pb-2 pt-2" : "safe-bottom",
+            )}
+          >
             <div className="flex flex-col gap-2.5">
-              <div className="flex items-center gap-3">
+              <div className={cn("flex items-center gap-3", keyboardOpen && "hidden")}>
                 <div
                   role="progressbar"
                   aria-label="Song completion"
@@ -336,7 +371,7 @@ export function GameScreen({
                     label="Rewind 10 seconds"
                     onClick={() => rewind(10)}
                     disabled={!controller.isReady}
-                    className="hidden sm:flex"
+                    className={keyboardOpen ? "hidden" : "hidden sm:flex"}
                   >
                     <RotateCcw aria-hidden className="size-4" />
                     <span className="text-xs tabular-nums">10</span>
@@ -345,6 +380,7 @@ export function GameScreen({
                     label="Rewind 5 seconds (Alt+B)"
                     onClick={() => rewind(5)}
                     disabled={!controller.isReady}
+                    className={keyboardOpen ? "hidden" : undefined}
                   >
                     <RotateCcw aria-hidden className="size-4" />
                     <span className="text-xs tabular-nums">5</span>
@@ -359,6 +395,7 @@ export function GameScreen({
                   whileTap={{ scale: 0.92 }}
                   className={cn(
                     "flex size-12 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground transition-shadow duration-300 disabled:opacity-40 disabled:shadow-none",
+                    keyboardOpen && "size-10",
                     !isPlaying && controller.isReady && !isPausedForRetry && "shadow-[0_0_28px_-6px_var(--glow-primary)]",
                   )}
                 >
@@ -381,18 +418,22 @@ export function GameScreen({
                 </motion.button>
 
                 <div className="flex items-center gap-1.5">
-                  <PlaybackRateControl
-                    rate={playbackRate}
-                    onChange={controller.setPlaybackRate}
-                    disabled={!controller.isReady}
-                  />
-                  <SyncControl
-                    compact
-                    offset={controller.syncOffset}
-                    onChange={controller.setSyncOffset}
-                    onTap={controller.syncToCurrentLine}
-                    disabled={!controller.isReady}
-                  />
+                  {!keyboardOpen && (
+                    <>
+                      <PlaybackRateControl
+                        rate={playbackRate}
+                        onChange={controller.setPlaybackRate}
+                        disabled={!controller.isReady}
+                      />
+                      <SyncControl
+                        compact
+                        offset={controller.syncOffset}
+                        onChange={controller.setSyncOffset}
+                        onTap={controller.syncToCurrentLine}
+                        disabled={!controller.isReady}
+                      />
+                    </>
+                  )}
                   <TransportButton label="Skip line (Alt+S)" onClick={controller.skipLine} disabled={!controller.isReady}>
                     <SkipForward aria-hidden className="size-4" />
                     <span className="hidden text-sm sm:inline">Skip</span>
@@ -403,6 +444,53 @@ export function GameScreen({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/**
+ * With the keyboard up, a tap on a button must not take focus away from the
+ * blank: the phone would close the keyboard, and the player wants to replay
+ * the line and keep typing. Fields still take focus as usual.
+ */
+function keepTypingFocus(event: React.MouseEvent) {
+  if (!isTextField(event.target as Element)) event.preventDefault();
+}
+
+/** Score and combo, with the "+points" / "miss" flash that rises from them. */
+function GameHud({
+  score,
+  combo,
+  flash,
+  onFlashDone,
+}: {
+  score: number;
+  combo: number;
+  flash: ScoreFlash | null;
+  onFlashDone: (id: number) => void;
+}) {
+  return (
+    <div className="relative flex shrink-0 items-center gap-2">
+      <HudStat icon={<Star className="size-3.5" />} label="Score" value={score} tone="primary" />
+      <ComboStat combo={combo} />
+      <AnimatePresence>
+        {flash && (
+          <motion.span
+            key={flash.id}
+            aria-hidden
+            initial={{ opacity: 0, y: 4, scale: 0.9 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [4, -6, -14, -22], scale: 1 }}
+            transition={{ duration: 0.9, ease: EASE_OUT, times: [0, 0.15, 0.6, 1] }}
+            onAnimationComplete={() => onFlashDone(flash.id)}
+            className={cn(
+              "pointer-events-none absolute -top-3 left-3 font-display text-sm font-bold tabular-nums",
+              flash.tone === "hit" ? "text-secondary" : "text-destructive",
+            )}
+          >
+            {flash.label}
+          </motion.span>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
