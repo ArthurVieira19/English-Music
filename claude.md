@@ -58,7 +58,7 @@ Mandatory:
 
 - Supabase (`@supabase/supabase-js`, `@supabase/ssr`) for auth and Postgres
 
-Server-side logic lives in Supabase Edge Functions (source in `supabase/functions/`, deployed to the Supabase project), never in a backend of our own. The site itself runs in the browser. The site is a static export (`output: "export"`) hosted on GitHub Pages (`.github/workflows/pages.yml`, base path `/lingoclip2.0` via `NEXT_PUBLIC_BASE_PATH`), so there is no middleware: `AuthGate` gates pages behind login on the client. The game route is `/game?id=<songId>` because song ids come from the database and cannot be pre-rendered.
+Server-side logic lives in Supabase Edge Functions (source in `supabase/functions/`, deployed to the Supabase project), never in a backend of our own. The site itself runs in the browser. The site is a static export (`output: "export"`) hosted on GitHub Pages (`.github/workflows/pages.yml`, base path = the repository name, set by the workflow via `NEXT_PUBLIC_BASE_PATH`), so there is no middleware: `AuthGate` gates pages behind login on the client. The game route is `/game?id=<songId>` because song ids come from the database and cannot be pre-rendered.
 
 ---
 
